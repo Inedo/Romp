@@ -38,6 +38,12 @@
     <Prefer32Bit>false</Prefer32Bit>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
+  <PropertyGroup>
+    <SignAssembly>true</SignAssembly>
+  </PropertyGroup>
+  <PropertyGroup>
+    <AssemblyOriginatorKeyFile>Romp.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="Inedo.Agents, Version=39.0.0.2, Culture=neutral, PublicKeyToken=9de986a2f8db80fc, processorArchitecture=MSIL">
       <HintPath>..\packages\Inedo.Agents.39.2.0\lib\net45\Inedo.Agents.dll</HintPath>
@@ -117,6 +123,7 @@
   <ItemGroup>
     <None Include="App.config" />
     <None Include="packages.config" />
+    <None Include="Romp.snk" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Data\Scripts\CompleteExecution.sql" />
