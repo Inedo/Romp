@@ -489,10 +489,14 @@ namespace Inedo.Romp
                 case "logs":
                     logs();
                     break;
+                case "purge":
+                    purge();
+                    break;
                 default:
                     Console.WriteLine("Usage:");
                     Console.WriteLine("romp jobs list");
                     Console.WriteLine("romp jobs logs [jobId]");
+                    Console.WriteLine("romp jobs purge <days>");
                     break;
             }
 
@@ -546,6 +550,32 @@ namespace Inedo.Romp
                     foreach (var log in RompDb.GetExecutionLogs(jobId.Value))
                         log.WriteText(0, Console.Out);
                 }
+            }
+
+            void purge()
+            {
+                var daysText = args.PopCommand();
+                if (string.IsNullOrEmpty(daysText))
+                    throw new RompException("Usage: romp logs purge <days>");
+
+                if (!int.TryParse(daysText, out int days) || days < 0)
+                    throw new RompException("Must specify a nonnegative integer for \"days\" argument.");
+
+                var now = DateTimeOffset.Now;
+                var executions = RompDb.GetExecutions()
+                    .Where(e => (int)e.StartDate.Subtract(now).TotalDays > days)
+                    .ToList();
+
+                Console.WriteLine($"Purging logs for jobs older than {days} days.");
+
+                foreach (var exec in executions)
+                {
+                    Console.WriteLine($"Purging job #{exec.ExecutionId} ({exec.StartDate.LocalDateTime})...");
+                    RompDb.DeleteExecution(exec.ExecutionId);
+                }
+
+                Console.WriteLine($"Purged {executions.Count} jobs.");
+                Console.WriteLine();
             }
         }
         private static void Credentials(ArgList args)

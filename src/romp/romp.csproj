@@ -126,20 +126,21 @@
     <None Include="Romp.snk" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Data\Scripts\CompleteExecution.sql" />
-    <Content Include="Data\Scripts\CompleteLogScope.sql" />
-    <Content Include="Data\Scripts\CreateExecution.sql" />
-    <Content Include="Data\Scripts\CreateLogScope.sql" />
-    <Content Include="Data\Scripts\CreateOrUpdateCredentials.sql" />
-    <Content Include="Data\Scripts\CreateOrUpdatePackageSource.sql" />
-    <Content Include="Data\Scripts\DeleteCredentials.sql" />
-    <Content Include="Data\Scripts\GetCredentials.sql" />
-    <Content Include="Data\Scripts\GetCredentialsByName.sql" />
-    <Content Include="Data\Scripts\GetExecutionLogs.sql" />
-    <Content Include="Data\Scripts\GetExecutions.sql" />
-    <Content Include="Data\Scripts\GetPackageSources.sql" />
-    <Content Include="Data\Scripts\Initialize.sql" />
-    <Content Include="Data\Scripts\WriteLogMessage.sql" />
+    <EmbeddedResource Include="Data\Scripts\CompleteExecution.sql" />
+    <EmbeddedResource Include="Data\Scripts\CompleteLogScope.sql" />
+    <EmbeddedResource Include="Data\Scripts\CreateExecution.sql" />
+    <EmbeddedResource Include="Data\Scripts\CreateLogScope.sql" />
+    <EmbeddedResource Include="Data\Scripts\CreateOrUpdateCredentials.sql" />
+    <EmbeddedResource Include="Data\Scripts\CreateOrUpdatePackageSource.sql" />
+    <EmbeddedResource Include="Data\Scripts\DeleteExecution.sql" />
+    <EmbeddedResource Include="Data\Scripts\DeleteCredentials.sql" />
+    <EmbeddedResource Include="Data\Scripts\GetCredentials.sql" />
+    <EmbeddedResource Include="Data\Scripts\GetCredentialsByName.sql" />
+    <EmbeddedResource Include="Data\Scripts\GetExecutionLogs.sql" />
+    <EmbeddedResource Include="Data\Scripts\GetExecutions.sql" />
+    <EmbeddedResource Include="Data\Scripts\GetPackageSources.sql" />
+    <EmbeddedResource Include="Data\Scripts\Initialize.sql" />
+    <EmbeddedResource Include="Data\Scripts\WriteLogMessage.sql" />
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

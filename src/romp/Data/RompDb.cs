@@ -85,6 +85,19 @@ namespace Inedo.Romp.Data
                 }
             }
         }
+        public static void DeleteExecution(int executionId)
+        {
+            using (var conn = new SQLiteConnection(ConnectionString))
+            {
+                conn.Open();
+
+                using (var cmd = new SQLiteCommand(GetScript(), conn))
+                {
+                    cmd.Parameters.AddWithValue("@Execution_Id", executionId);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
         public static int CreateLogScope(int executionId, int? parentScopeSequence, string scopeName, DateTime startDate)
         {
             if (!RompConfig.StoreLogs)
