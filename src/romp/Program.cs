@@ -18,6 +18,8 @@ using Inedo.Romp.Data;
 using Inedo.Romp.RompExecutionEngine;
 using Inedo.Romp.RompPack;
 using Inedo.Serialization;
+using Inedo.UPack;
+using Inedo.UPack.Packaging;
 using Newtonsoft.Json;
 
 namespace Inedo.Romp
@@ -57,7 +59,7 @@ namespace Inedo.Romp
                         Validate(argList);
                         break;
                     case "inspect":
-                        Inspect(argList);
+                        await Inspect(argList);
                         break;
                     case "pack":
                         Pack(argList);
@@ -114,62 +116,28 @@ namespace Inedo.Romp
 
         private static async Task Install(ArgList args)
         {
-            var packageName = args.PopCommand();
-            if (string.IsNullOrEmpty(packageName))
-                throw new RompException("Usage: romp install <packageName> [--source=<sourceName>] [--version=<value>] [--simulate] [--force] [-Vvar=value...]");
+            var spec = PackageSpecifier.FromArgs(args);
+            if (spec == null)
+                throw new RompException("Usage: romp install <package-file-or-name> [--version=<version-number>] [--source=<name-or-feed-url>] [--simulate] [--force] [-Vvar=value...]");
+
+            Console.WriteLine("Package: " + spec);
+            Console.WriteLine();
 
             await ExtensionsManager.WaitForInitializationAsync();
 
-            string source = null;
-            string version = null;
             bool simulate = false;
             bool force = false;
             var vars = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            Stream packageStream = null;
-
-            try
+            using (var package = await spec.FetchPackageAsync(args, default))
             {
                 args.ProcessOptions(parseOption);
-                args.ThrowIfAnyRemaining();
-
-                if (!string.IsNullOrEmpty(source))
-                {
-                    if (packageName.EndsWith(".upack", StringComparison.OrdinalIgnoreCase))
-                        throw new RompException("--source cannot be specified if <packageName> refers to a file.");
-
-                    var client = ProGetClient.GetClient(source);
-                    packageStream = await client.DownloadPackageAsync(packageName, version).ConfigureAwait(false);
-                }
-                else if (packageName.EndsWith(".upack", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (!string.IsNullOrEmpty(version))
-                        throw new RompException("--version cannot be specified if <packageName> refers to a file.");
-
-                    if (!File.Exists(packageName))
-                        throw new RompException($"Package \"{packageName}\" not found.");
-
-                    packageStream = new FileStream(packageName, FileMode.Open, FileAccess.Read, FileShare.Read);
-                }
-                else
-                {
-                    throw new RompException("Missing --source.");
-                }
-
-                var installer = new PackageInstaller
-                {
-                    SourceStream = packageStream,
-                    Force = force,
-                    Simulate = simulate
-                };
 
                 foreach (var var in vars)
                     RompSessionVariable.SetSessionVariable(var.Key, var.Value);
 
-                var packageInfo = RompPackInfo.Load(packageStream);
+                var packageInfo = RompPackInfo.Load(package);
                 if (packageInfo.WriteScriptErrors())
                     throw new RompException("Error compiling install script.");
-
-                packageStream.Position = 0;
 
                 foreach (var var in packageInfo.Variables)
                 {
@@ -221,15 +189,14 @@ namespace Inedo.Romp
                 if (credentialsMissing)
                     throw new RompException("Use \"romp credentials store\" to create missing credentials.");
 
-                // PackageInstaller is unneccessary and should be removed
-                await installer.RunAsync();
+                await PackageInstaller.RunAsync(package, simulate);
 
                 PackageRegistry.GetRegistry(RompConfig.UserMode).RegisterPackage(
                     new RegisteredPackage
                     {
-                        Group = packageInfo.Group,
-                        Name = packageInfo.Name,
-                        Version = packageInfo.Version,
+                        Group = package.Group,
+                        Name = package.Name,
+                        Version = package.Version.ToString(),
                         InstallationDate = DateTimeOffset.Now.ToString("o"),
                         InstalledBy = Environment.UserName,
                         InstalledUsing = "romp"
@@ -237,21 +204,11 @@ namespace Inedo.Romp
                     CancellationToken.None
                 );
             }
-            finally
-            {
-                packageStream?.Dispose();
-            }
 
             bool parseOption(ArgOption o)
             {
                 switch (o.Key.ToLowerInvariant())
                 {
-                    case "source":
-                        source = o.Value;
-                        return true;
-                    case "version":
-                        version = o.Value;
-                        return true;
                     case "simulate":
                     case "simulation":
                         simulate = true;
@@ -276,62 +233,71 @@ namespace Inedo.Romp
             if (string.IsNullOrEmpty(packageName))
                 throw new RompException("Usage: romp validate <package-file>");
 
-            var packageInfo = RompPackInfo.Load(packageName);
-            if (packageInfo.WriteScriptErrors())
-                throw new RompException("Error compiling install script.");
+            using (var package = new UniversalPackage(packageName))
+            {
+                var packageInfo = RompPackInfo.Load(package);
+                if (packageInfo.WriteScriptErrors())
+                    throw new RompException("Error compiling install script.");
 
-            Console.WriteLine($"Package {packageInfo.FullName} validated.");
+                Console.WriteLine($"Package {new UniversalPackageId(package.Group, package.Name)} validated.");
+            }
         }
-        private static void Inspect(ArgList args)
+        private static async Task Inspect(ArgList args)
         {
-            var packageName = args.PopCommand();
-            if (string.IsNullOrEmpty(packageName))
-                throw new RompException("Usage: romp inspect <package-file>");
+            var spec = PackageSpecifier.FromArgs(args);
+            if (spec == null)
+                throw new RompException("Usage: romp inspect <package-file-or-name> [--version=<version-number>] [--source=<name-or-feed-url>]");
 
-            var packageInfo = RompPackInfo.Load(packageName);
-            Console.WriteLine("Name: " + packageInfo.FullName);
-            Console.WriteLine("Version: " + packageInfo.Version);
-
+            Console.WriteLine("Package: " + spec);
             Console.WriteLine();
-            if (packageInfo.Variables.Count > 0)
-            {
-                Console.WriteLine("Variables:");
-                foreach (var var in packageInfo.Variables)
-                    Console.WriteLine($" {var.Key}={var.Value.Value?.ToString() ?? "(required)"}");
-            }
-            else
-            {
-                Console.WriteLine("Variables: (none)");
-            }
 
-            Console.WriteLine();
-            if (packageInfo.Credentials.Count > 0)
+            using (var package = await spec.FetchPackageAsync(args, default))
             {
-                Console.WriteLine("Credentials:");
-                foreach (var creds in packageInfo.Credentials)
-                    Console.WriteLine($" {creds.Key}: {AH.CoalesceString(creds.Value.Description, "(required)")}");
-            }
-            else
-            {
-                Console.WriteLine("Credentials: (none)");
-            }
+                var packageInfo = RompPackInfo.Load(package);
+                Console.WriteLine("Name: " + new UniversalPackageId(package.Group, package.Name));
+                Console.WriteLine("Version: " + package.Version);
 
-            Console.WriteLine();
-            if (!string.IsNullOrWhiteSpace(packageInfo.RawInstallScript))
-            {
-                if (packageInfo.InstallScript.Errors.Count > 0)
+                Console.WriteLine();
+                if (packageInfo.Variables.Count > 0)
                 {
-                    Console.WriteLine("install.otter:");
-                    packageInfo.WriteScriptErrors();
+                    Console.WriteLine("Variables:");
+                    foreach (var var in packageInfo.Variables)
+                        Console.WriteLine($" {var.Key}={var.Value.Value?.ToString() ?? "(required)"}");
                 }
                 else
                 {
-                    Console.WriteLine("install.otter: no errors");
+                    Console.WriteLine("Variables: (none)");
                 }
-            }
-            else
-            {
-                Console.WriteLine("install.otter: not present");
+
+                Console.WriteLine();
+                if (packageInfo.Credentials.Count > 0)
+                {
+                    Console.WriteLine("Credentials:");
+                    foreach (var creds in packageInfo.Credentials)
+                        Console.WriteLine($" {creds.Key}: {AH.CoalesceString(creds.Value.Description, "(required)")}");
+                }
+                else
+                {
+                    Console.WriteLine("Credentials: (none)");
+                }
+
+                Console.WriteLine();
+                if (!string.IsNullOrWhiteSpace(packageInfo.RawInstallScript))
+                {
+                    if (packageInfo.InstallScript.Errors.Count > 0)
+                    {
+                        Console.WriteLine("install.otter:");
+                        packageInfo.WriteScriptErrors();
+                    }
+                    else
+                    {
+                        Console.WriteLine("install.otter: no errors");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("install.otter: not present");
+                }
             }
         }
         private static void Pack(ArgList args)
@@ -895,8 +861,6 @@ namespace Inedo.Romp
 
             if(!anyExtensions)
                 Console.WriteLine("  (no extensions loaded)");
-
-            Console.WriteLine();
         }
 
         private static string ReadSensitive()

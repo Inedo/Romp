@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -9,18 +8,15 @@ using Inedo.ExecutionEngine;
 using Inedo.ExecutionEngine.Parser;
 using Inedo.Romp.Data;
 using Inedo.Romp.RompExecutionEngine;
+using Inedo.UPack.Packaging;
 
 namespace Inedo.Romp.RompPack
 {
-    internal sealed class PackageInstaller
+    internal static class PackageInstaller
     {
-        public Stream SourceStream { get; set; }
-        public bool Simulate { get; set; }
-        public bool Force { get; set; }
-
         public static string PackageContentsPath { get; private set; }
 
-        public async Task RunAsync()
+        public static async Task RunAsync(UniversalPackage package, bool simulate)
         {
             await ExtensionsManager.WaitForInitializationAsync().ConfigureAwait(false);
 
@@ -29,10 +25,7 @@ namespace Inedo.Romp.RompPack
             {
                 Directory.CreateDirectory(tempPath);
                 Console.WriteLine("Extracting package...");
-                using (var zip = new ZipArchive(this.SourceStream, ZipArchiveMode.Read))
-                {
-                    zip.ExtractToDirectory(tempPath);
-                }
+                await package.ExtractAllItemsAsync(tempPath, default);
 
                 var installScriptFileName = Path.Combine(tempPath, "install.otter");
                 var installScript = Compile(installScriptFileName);
@@ -40,7 +33,7 @@ namespace Inedo.Romp.RompPack
                     throw new RompException("Unable to compile install.otter.");
 
                 PackageContentsPath = Path.Combine(tempPath, "package");
-                await this.RunPlan(installScript);
+                await RunPlanAsync(installScript, simulate);
             }
             finally
             {
@@ -50,16 +43,16 @@ namespace Inedo.Romp.RompPack
             }
         }
 
-        private async Task RunPlan(ScopedStatementBlock script)
+        private static async Task RunPlanAsync(ScopedStatementBlock script, bool simulate)
         {
             RompRaftFactory.Initialize();
 
-            if (this.Simulate)
+            if (simulate)
                 Console.WriteLine("Running as simulation");
 
             Console.WriteLine();
 
-            var executer = new RompExecutionEnvironment(script, this.Simulate);
+            var executer = new RompExecutionEnvironment(script, simulate);
             if (!Console.IsOutputRedirected)
             {
                 RompConsoleMessenger.ShowProgress = true;

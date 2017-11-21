@@ -2,11 +2,11 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
 using Inedo.ExecutionEngine;
 using Inedo.ExecutionEngine.Parser;
 using Inedo.ExecutionEngine.Parser.Processor;
+using Inedo.UPack.Packaging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -14,78 +14,35 @@ namespace Inedo.Romp.RompPack
 {
     internal sealed class RompPackInfo
     {
-        private RompPackInfo(UpackMetadata upack, Dictionary<string, PackageVariable> variables, Dictionary<string, PackageCredentials> credentials, string installScript)
+        private RompPackInfo(Dictionary<string, PackageVariable> variables, Dictionary<string, PackageCredentials> credentials, string installScript)
         {
-            this.Group = upack.Group;
-            this.Name = upack.Name;
-            this.Version = upack.Version;
             this.Variables = new ReadOnlyDictionary<string, PackageVariable>(variables);
             this.Credentials = new ReadOnlyDictionary<string, PackageCredentials>(credentials);
             this.RawInstallScript = installScript;
             this.InstallScript = Compiler.CompileText(installScript ?? string.Empty);
         }
 
-        public string Group { get; }
-        public string Name { get; }
-        public string FullName => string.IsNullOrEmpty(this.Group) ? this.Name : (this.Group + "/" + this.Name);
-        public string Version { get; }
         public IReadOnlyDictionary<string, PackageVariable> Variables { get; }
         public IReadOnlyDictionary<string, PackageCredentials> Credentials { get; }
         public string RawInstallScript { get; }
         public ScriptProcessorOutput InstallScript { get; }
 
-        public static RompPackInfo Load(string packageFileName)
+        public static RompPackInfo Load(UniversalPackage package)
         {
-            if (string.IsNullOrEmpty(packageFileName))
-                throw new ArgumentNullException(nameof(packageFileName));
+            if (package == null)
+                throw new ArgumentNullException(nameof(package));
 
-            using (var stream = File.OpenRead(packageFileName))
             {
-                return Load(stream);
-            }
-        }
-        public static RompPackInfo Load(Stream packageStream)
-        {
-            if (packageStream == null)
-                throw new ArgumentNullException(nameof(packageStream));
-
-            using (var zip = new ZipArchive(packageStream, ZipArchiveMode.Read, true))
-            {
-                var upackEntry = zip.GetEntry("upack.json");
-                if (upackEntry == null)
-                    throw new RompException("Missing upack.json file in package.");
-
-                UpackMetadata upackInfo;
-
-                using (var upackStream = upackEntry.Open())
-                using (var streamReader = new StreamReader(upackStream, InedoLib.UTF8Encoding))
-                using (var jsonReader = new JsonTextReader(streamReader))
-                {
-                    try
-                    {
-                        upackInfo = new JsonSerializer().Deserialize<UpackMetadata>(jsonReader);
-                    }
-                    catch (Exception ex)
-                    {
-                        throw new RompException("Invalid upack.json file: JSON syntax error.", ex);
-                    }
-                }
-
-                if (string.IsNullOrWhiteSpace(upackInfo.Name))
-                    throw new RompException("Invalid upack.json file: \"name\" property is missing or invalid.");
-                if (string.IsNullOrWhiteSpace(upackInfo.Version))
-                    throw new RompException("Invalid upack.json file: \"version\" property is missing or invalid.");
-
                 var packageVariables = new Dictionary<string, PackageVariable>(StringComparer.OrdinalIgnoreCase);
 
-                var varEntry = zip.GetEntry("packageVariables.json");
+                var varEntry = package.GetRawEntry("packageVariables.json");
                 if (varEntry != null)
                 {
                     try
                     {
                         JObject varObj;
 
-                        using (var varStream = varEntry.Open())
+                        using (var varStream = varEntry.Value.Open())
                         using (var streamReader = new StreamReader(varStream, InedoLib.UTF8Encoding))
                         using (var jsonReader = new JsonTextReader(streamReader))
                         {
@@ -103,14 +60,14 @@ namespace Inedo.Romp.RompPack
 
                 var packageCredentials = new Dictionary<string, PackageCredentials>(StringComparer.OrdinalIgnoreCase);
 
-                var credsEntry = zip.GetEntry("packageCredentials.json");
+                var credsEntry = package.GetRawEntry("packageCredentials.json");
                 if (credsEntry != null)
                 {
                     try
                     {
                         JArray credsArray;
 
-                        using (var credsStream = credsEntry.Open())
+                        using (var credsStream = credsEntry.Value.Open())
                         using (var streamReader = new StreamReader(credsStream, InedoLib.UTF8Encoding))
                         using (var jsonReader = new JsonTextReader(streamReader))
                         {
@@ -133,17 +90,17 @@ namespace Inedo.Romp.RompPack
                 }
 
                 string installScript = null;
-                var installScriptEntry = zip.GetEntry("install.otter");
+                var installScriptEntry = package.GetRawEntry("install.otter");
                 if (installScriptEntry != null)
                 {
-                    using (var installScriptStream = installScriptEntry.Open())
+                    using (var installScriptStream = installScriptEntry.Value.Open())
                     using (var streamReader = new StreamReader(installScriptStream, InedoLib.UTF8Encoding))
                     {
                         installScript = streamReader.ReadToEnd();
                     }
                 }
 
-                return new RompPackInfo(upackInfo, packageVariables, packageCredentials, installScript);
+                return new RompPackInfo(packageVariables, packageCredentials, installScript);
             }
         }
 
@@ -159,16 +116,6 @@ namespace Inedo.Romp.RompPack
             }
 
             return this.InstallScript.Errors.Any(e => e.Level == ScriptErrorLevel.Error);
-        }
-
-        private sealed class UpackMetadata
-        {
-            [JsonProperty("group")]
-            public string Group { get; set; }
-            [JsonProperty("name")]
-            public string Name { get; set; }
-            [JsonProperty("version")]
-            public string Version { get; set; }
         }
     }
 }
