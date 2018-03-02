@@ -76,13 +76,13 @@ namespace Inedo.Romp
                     ExtensionsPath = ExtensionsPath,
                     ExtensionsTempPath = ExtensionsTempPath,
                     BuiltInExtensionsPath = BuiltInExtensionsPath,
-                    FileExtension = ".inedox",
+                    FileExtensions = new[] { ".inedox", ".upack" },
                     ExtensibleTypes = new[]
                     {
-                        typeof(Inedo.Extensibility.Operations.Operation),
-                        typeof(Inedo.Extensibility.VariableFunctions.VariableFunction),
-                        typeof(Inedo.Extensibility.Credentials.ResourceCredentials),
-                        typeof(Inedo.Extensibility.ListVariableSources.ListVariableSource)
+                        typeof(Extensibility.Operations.Operation),
+                        typeof(Extensibility.VariableFunctions.VariableFunction),
+                        typeof(Extensibility.Credentials.ResourceCredentials),
+                        typeof(Extensibility.ListVariableSources.ListVariableSource)
                     }
                 }
             );

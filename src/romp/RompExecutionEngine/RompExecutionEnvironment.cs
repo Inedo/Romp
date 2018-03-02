@@ -81,7 +81,7 @@ namespace Inedo.Romp.RompExecutionEngine
             }
 
             var operation = (Operation)Activator.CreateInstance(operationType);
-            ScriptPropertyMapper.SetProperties(operation, actionStatement, rompContext, context);
+            await ScriptPropertyMapper.SetPropertiesAsync(operation, actionStatement, rompContext, context);
 
             var loggedStatus = ExecutionStatus.Normal;
             var logScopeName = Operation.GetLogScopeName(operationType, actionStatement);

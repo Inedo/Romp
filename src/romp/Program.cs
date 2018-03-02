@@ -77,7 +77,7 @@ namespace Inedo.Romp
                         Config(argList);
                         break;
                     case "packages":
-                        Packages(argList);
+                        await Packages(argList);
                         break;
                     case "about":
                         About(argList);
@@ -191,7 +191,7 @@ namespace Inedo.Romp
 
                 await PackageInstaller.RunAsync(package, simulate);
 
-                PackageRegistry.GetRegistry(RompConfig.UserMode).RegisterPackage(
+                await PackageRegistry.GetRegistry(RompConfig.UserMode).RegisterPackageAsync(
                     new RegisteredPackage
                     {
                         Group = package.Group,
@@ -803,13 +803,13 @@ namespace Inedo.Romp
             {
             }
         }
-        private static void Packages(ArgList args)
+        private static async Task Packages(ArgList args)
         {
             var command = args.PopCommand()?.ToLowerInvariant();
             switch (command)
             {
                 case "list":
-                    list();
+                    await list();
                     break;
                 default:
                     Console.WriteLine("Usage:");
@@ -817,11 +817,11 @@ namespace Inedo.Romp
                     break;
             }
 
-            void list()
+            async Task list()
             {
                 using (var registry = PackageRegistry.GetRegistry(RompConfig.UserMode))
                 {
-                    var packages = registry.GetInstalledPackages();
+                    var packages = await registry.GetInstalledPackagesAsync();
                     if (packages.Count > 0)
                     {
                         Console.WriteLine("Installed packages:");

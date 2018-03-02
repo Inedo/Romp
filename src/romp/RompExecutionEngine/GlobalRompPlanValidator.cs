@@ -35,12 +35,6 @@ namespace Inedo.Romp.RompExecutionEngine
 
         private static void Validate(ActionStatement statement, ValidateStatementEventArgs e)
         {
-            if (OtterScriptSymbolComparer.Instance.Equals(statement.ActionName.Name, "Execute-LegacyAction"))
-            {
-                e.AddWarning("Execute-LegacyAction");
-                return;
-            }
-
             Type operationType;
             try
             {

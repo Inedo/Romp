@@ -1,12 +1,14 @@
 ﻿namespace Inedo.Romp.Configuration
 {
-    internal struct JSValue<T>
+    internal readonly struct JSValue<T>
     {
         public JSValue(T value)
         {
             this.Value = value;
             this.IsDefined = true;
         }
+
+        public static implicit operator JSValue<T>(T value) => new JSValue<T>(value);
 
         public T Value { get; }
         public bool IsDefined { get; }

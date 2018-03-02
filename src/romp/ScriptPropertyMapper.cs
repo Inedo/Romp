@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using Inedo.ExecutionEngine;
 using Inedo.ExecutionEngine.Executer;
 using Inedo.ExecutionEngine.Mapping;
@@ -9,7 +10,6 @@ using Inedo.Extensibility;
 using Inedo.Extensibility.Credentials;
 using Inedo.Extensibility.VariableFunctions;
 using Inedo.Romp.RompExecutionEngine;
-using RubbishMapper = Inedo.Extensibility.Operations.ICustomArgumentMapper;
 
 namespace Inedo.Romp
 {
@@ -17,26 +17,26 @@ namespace Inedo.Romp
     {
         private static readonly CoreMapper core = new CoreMapper();
 
-        public static void SetProperties(object target, ActionStatement action, IVariableFunctionContext bmContext, IExecuterContext executerContext)
+        public static async Task SetPropertiesAsync(object target, ActionStatement action, IVariableFunctionContext bmContext, IExecuterContext executerContext)
         {
             if (target == null)
                 throw new ArgumentNullException(nameof(target));
 
             var variableContext = new RompVariableEvaluationContext(bmContext, executerContext);
-            core.SetProperties(target, action, variableContext, null);
+            await core.SetPropertiesAsync(target, action, variableContext, null);
 
             (target as IHasCredentials)?.SetValues();
             (core.GetTemplate(target) as IHasCredentials)?.SetValues();
         }
 
-        public static void SetNamedProperties(object target, IEnumerable<KeyValuePair<string, RuntimeValue>> arguments)
+        public static Task SetNamedPropertiesAsync(object target, IEnumerable<KeyValuePair<string, RuntimeValue>> arguments)
         {
             if (target == null)
                 throw new ArgumentNullException(nameof(target));
             if (arguments == null)
                 throw new ArgumentNullException(nameof(arguments));
 
-            core.SetNamedProperties(target, arguments);
+            return core.SetNamedPropertiesAsync(target, arguments);
         }
 
         public static void ReadOutputs(object target, IEnumerable<KeyValuePair<string, RuntimeVariableName>> variables, IExecuterContext executerContext) => core.ReadOutputs(target, variables, executerContext);
@@ -106,33 +106,7 @@ namespace Inedo.Romp
                 if (mapper != null)
                     return mapper;
 
-                if (instance is RubbishMapper rubbish)
-                    return new CustomArgumentMapperShim(rubbish);
-
                 return null;
-            }
-
-            private sealed class CustomArgumentMapperShim : ICustomArgumentMapper
-            {
-                private readonly RubbishMapper mapper;
-
-                public CustomArgumentMapperShim(RubbishMapper mapper) => this.mapper = mapper;
-
-                public RuntimeValue DefaultArgument
-                {
-                    set => this.mapper.DefaultArgument = value;
-                }
-
-                public IReadOnlyDictionary<string, RuntimeValue> NamedArguments
-                {
-                    set => this.mapper.NamedArguments = value;
-                }
-
-                public IDictionary<string, RuntimeValue> OutArguments
-                {
-                    get => this.mapper.OutArguments;
-                    set => this.mapper.OutArguments = value;
-                }
             }
         }
     }

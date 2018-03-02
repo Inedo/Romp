@@ -20,49 +20,49 @@ namespace Inedo.Romp.Configuration
         public bool? StoreLogs
         {
             get => this.storeLogs.Value;
-            set => this.storeLogs = new JSValue<bool?>(value);
+            set => this.storeLogs = value;
         }
 
         [JsonProperty("log-level", ItemConverterType = typeof(MessageLevelConverter))]
         public MessageLevel? LogLevel
         {
             get => this.logLevel.Value;
-            set => this.logLevel = new JSValue<MessageLevel?>(value);
+            set => this.logLevel = value;
         }
 
         [JsonProperty("cache-packages")]
         public bool? CachePackages
         {
             get => this.cachePackages.Value;
-            set => this.cachePackages = new JSValue<bool?>(value);
+            set => this.cachePackages = value;
         }
 
         [JsonProperty("user-mode")]
         public bool? UserMode
         {
             get => this.userMode.Value;
-            set => this.userMode = new JSValue<bool?>(value);
+            set => this.userMode = value;
         }
 
         [JsonProperty("secure-credentials")]
         public bool? SecureCredentials
         {
             get => this.secureCredentials.Value;
-            set => this.secureCredentials = new JSValue<bool?>(value);
+            set => this.secureCredentials = value;
         }
 
         [JsonProperty("extensions-path")]
         public string ExtensionsPath
         {
             get => this.extensionsPath.Value;
-            set => this.extensionsPath = new JSValue<string>(value);
+            set => this.extensionsPath = value;
         }
 
         [JsonProperty("extensions-temp-path")]
         public string ExtensionsTempPath
         {
             get => this.extensionsTempPath.Value;
-            set => this.extensionsTempPath = new JSValue<string>(value);
+            set => this.extensionsTempPath = value;
         }
 
         [NotCascaded]

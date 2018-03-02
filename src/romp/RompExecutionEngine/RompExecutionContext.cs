@@ -42,6 +42,7 @@ namespace Inedo.Romp.RompExecutionEngine
         int? IVariableFunctionContext.ProjectId => null;
         int? IVariableFunctionContext.EnvironmentId => null;
         int? IVariableFunctionContext.ExecutionId => this.ExecutionId;
+        int? IVariableFunctionContext.ServerId => 1;
 
         public RompExecutionContext WithExecuterContext(IExecuterContext executerContext) => new RompExecutionContext(this) { ExecuterContext = executerContext };
         public RompExecutionContext WithDirectory(string directory) => new RompExecutionContext(this) { workingDirectoryOverride = directory };
@@ -66,11 +67,7 @@ namespace Inedo.Romp.RompExecutionEngine
             return template.EvaluateAsync(env);
         }
 
-        public RuntimeValue ExpandVariables(string text)
-        {
-            var ps = ProcessedString.Parse(text);
-            return ps.Evaluate(new RompVariableEvaluationContext(this, this.ExecuterContext));
-        }
+        public RuntimeValue ExpandVariables(string text) => this.ExpandVariablesAsync(text).GetAwaiter().GetResult();
         public Task<RuntimeValue> ExpandVariablesAsync(string text)
         {
             var ps = ProcessedString.Parse(text);
