@@ -1,42 +1,10 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{2D44F324-9E3E-44FA-9BA7-59EBBFA18BBC}</ProjectGuid>
-    <OutputType>Exe</OutputType>
-    <RootNamespace>Inedo.Romp</RootNamespace>
-    <AssemblyName>romp</AssemblyName>
-    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
-    <TargetFrameworkProfile />
-    <NuGetPackageImportStamp>
-    </NuGetPackageImportStamp>
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <Prefer32Bit>false</Prefer32Bit>
+    <OutputType>exe</OutputType>
+    <TargetFramework>net452</TargetFramework>
     <LangVersion>latest</LangVersion>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
+	<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <Prefer32Bit>false</Prefer32Bit>
-    <LangVersion>latest</LangVersion>
   </PropertyGroup>
   <PropertyGroup>
     <SignAssembly>true</SignAssembly>
@@ -45,112 +13,20 @@
     <AssemblyOriginatorKeyFile>Romp.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Inedo.Agents, Version=40.0.0.1, Culture=neutral, PublicKeyToken=9de986a2f8db80fc, processorArchitecture=MSIL">
-      <HintPath>..\packages\Inedo.Agents.40.1.0\lib\net45\Inedo.Agents.dll</HintPath>
-    </Reference>
-    <Reference Include="Inedo.Agents.Client, Version=1000.0.0.0, Culture=neutral, PublicKeyToken=9de986a2f8db80fc, processorArchitecture=MSIL">
-      <HintPath>..\packages\Inedo.Agents.Client.528.0.0-pre0002\lib\net45\Inedo.Agents.Client.dll</HintPath>
-    </Reference>
-    <Reference Include="Inedo.ExecutionEngine, Version=1000.0.0.0, Culture=neutral, PublicKeyToken=68703f0e52007e75, processorArchitecture=MSIL">
-      <HintPath>..\packages\Inedo.ExecutionEngine.64.0.0-pre0004\lib\net45\Inedo.ExecutionEngine.dll</HintPath>
-    </Reference>
-    <Reference Include="Inedo.SDK, Version=1.0.4.0, Culture=neutral, PublicKeyToken=29fae5dec3001603, processorArchitecture=MSIL">
-      <HintPath>..\packages\Inedo.SDK.DevOnly.1.0.4\lib\net452\Inedo.SDK.dll</HintPath>
-    </Reference>
-    <Reference Include="Inedo.UPack, Version=0.1.0.0, Culture=neutral, PublicKeyToken=473f66fe047b59d7, processorArchitecture=MSIL">
-      <HintPath>..\packages\Inedo.UPack.0.1.0-pre0026\lib\net45\Inedo.UPack.dll</HintPath>
-    </Reference>
-    <Reference Include="InedoLib, Version=1000.0.0.0, Culture=neutral, PublicKeyToken=112cfb71329714a6, processorArchitecture=MSIL">
-      <HintPath>..\packages\InedoLib.528.0.0-pre0002\lib\net45\InedoLib.dll</HintPath>
-    </Reference>
-    <Reference Include="Newtonsoft.Json, Version=10.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>..\packages\Newtonsoft.Json.10.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
-    </Reference>
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Data.SQLite, Version=1.0.108.0, Culture=neutral, PublicKeyToken=db937bc2d44ff139, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Data.SQLite.Core.1.0.108.0\lib\net451\System.Data.SQLite.dll</HintPath>
-    </Reference>
-    <Reference Include="System.IO.Compression" />
-    <Reference Include="System.IO.Compression.FileSystem" />
+    <EmbeddedResource Include="Data\Scripts\*.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Inedo.Agents" Version="40.1.0" />
+    <PackageReference Include="Inedo.Agents.Client" Version="528.0.0-pre0002" />
+    <PackageReference Include="Inedo.ExecutionEngine" Version="64.0.0-pre0004" />
+    <PackageReference Include="Inedo.SDK.DevOnly" Version="1.0.4" />
+    <PackageReference Include="Inedo.UPack" Version="0.1.0-pre0026" />
+    <PackageReference Include="InedoLib" Version="528.0.0-pre0002" />
+    <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
+    <PackageReference Include="System.Data.SQLite.Core" Version="1.0.108" />
+    <PackageReference Include="System.ValueTuple" Version="4.4.0" />
+  </ItemGroup>
+  <ItemGroup>
     <Reference Include="System.Security" />
-    <Reference Include="System.ValueTuple, Version=4.0.2.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.ValueTuple.4.4.0\lib\netstandard1.0\System.ValueTuple.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Xml.Linq" />
-    <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Xml" />
   </ItemGroup>
-  <ItemGroup>
-    <Compile Include="Agents\LocalFileOperationsExecuter.cs" />
-    <Compile Include="ArgList.cs" />
-    <Compile Include="ArgOption.cs" />
-    <Compile Include="Configuration\JSValue.cs" />
-    <Compile Include="Configuration\MessageLevelConverter.cs" />
-    <Compile Include="Configuration\NotCascadedAttribute.cs" />
-    <Compile Include="Configuration\RompConfigValues.cs" />
-    <Compile Include="CredentialsExtensions.cs" />
-    <Compile Include="Data\Domains.cs" />
-    <Compile Include="Data\RompDb.cs" />
-    <Compile Include="Data\ScopedExecutionLog.cs" />
-    <Compile Include="Data\Tables.cs" />
-    <Compile Include="ExtensionsManager.cs" />
-    <Compile Include="Extensions\Operations\DeployContentsOperation.cs" />
-    <Compile Include="Factory.cs" />
-    <Compile Include="PackageSpecifier.cs" />
-    <Compile Include="Program.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Configuration\RompConfig.cs" />
-    <Compile Include="RompConsoleMessenger.cs" />
-    <Compile Include="RompException.cs" />
-    <Compile Include="Agents\LocalAgent.cs" />
-    <Compile Include="RompExecutionEngine\GlobalRompPlanValidator.cs" />
-    <Compile Include="RompExecutionEngine\OperationStatus.cs" />
-    <Compile Include="RompExecutionEngine\RompExecutionContext.cs" />
-    <Compile Include="RompExecutionEngine\RompExecutionEnvironment.cs" />
-    <Compile Include="RompExecutionEngine\RompScopedLogger.cs" />
-    <Compile Include="RompExecutionEngine\RompSessionVariable.cs" />
-    <Compile Include="RompExecutionEngine\RompVariableEvaluationContext.cs" />
-    <Compile Include="RompPack\PackageBuilder.cs" />
-    <Compile Include="RompPack\PackageCredentials.cs" />
-    <Compile Include="RompPack\PackageInstaller.cs" />
-    <Compile Include="RompPack\PackageVariable.cs" />
-    <Compile Include="RompPack\ProGetClient.cs" />
-    <Compile Include="RompPack\RompPackInfo.cs" />
-    <Compile Include="RompRaftFactory.cs" />
-    <Compile Include="RompSdkConfig.cs" />
-    <Compile Include="ScriptPropertyMapper.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="App.config" />
-    <None Include="packages.config" />
-    <None Include="Romp.snk" />
-  </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="Data\Scripts\CompleteExecution.sql" />
-    <EmbeddedResource Include="Data\Scripts\CompleteLogScope.sql" />
-    <EmbeddedResource Include="Data\Scripts\CreateExecution.sql" />
-    <EmbeddedResource Include="Data\Scripts\CreateLogScope.sql" />
-    <EmbeddedResource Include="Data\Scripts\CreateOrUpdateCredentials.sql" />
-    <EmbeddedResource Include="Data\Scripts\CreateOrUpdatePackageSource.sql" />
-    <EmbeddedResource Include="Data\Scripts\DeleteExecution.sql" />
-    <EmbeddedResource Include="Data\Scripts\DeleteCredentials.sql" />
-    <EmbeddedResource Include="Data\Scripts\GetCredentials.sql" />
-    <EmbeddedResource Include="Data\Scripts\GetCredentialsByName.sql" />
-    <EmbeddedResource Include="Data\Scripts\GetExecutionLogs.sql" />
-    <EmbeddedResource Include="Data\Scripts\GetExecutions.sql" />
-    <EmbeddedResource Include="Data\Scripts\GetPackageSources.sql" />
-    <EmbeddedResource Include="Data\Scripts\Initialize.sql" />
-    <EmbeddedResource Include="Data\Scripts\WriteLogMessage.sql" />
-  </ItemGroup>
-  <ItemGroup />
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <Import Project="..\packages\System.Data.SQLite.Core.1.0.108.0\build\net451\System.Data.SQLite.Core.targets" Condition="Exists('..\packages\System.Data.SQLite.Core.1.0.108.0\build\net451\System.Data.SQLite.Core.targets')" />
-  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
-    <PropertyGroup>
-      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
-    </PropertyGroup>
-    <Error Condition="!Exists('..\packages\System.Data.SQLite.Core.1.0.108.0\build\net451\System.Data.SQLite.Core.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\System.Data.SQLite.Core.1.0.108.0\build\net451\System.Data.SQLite.Core.targets'))" />
-  </Target>
 </Project>
