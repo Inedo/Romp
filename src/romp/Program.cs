@@ -199,7 +199,7 @@ namespace Inedo.Romp
                         Version = package.Version.ToString(),
                         InstallationDate = DateTimeOffset.Now.ToString("o"),
                         InstalledBy = Environment.UserName,
-                        InstalledUsing = "romp"
+                        InstalledUsing = "Romp"
                     },
                     CancellationToken.None
                 );
@@ -367,7 +367,7 @@ namespace Inedo.Romp
                     Console.WriteLine(" " + s.Name + ": " + url);
                 }
 
-                if(!any)
+                if (!any)
                     Console.WriteLine(" (none)");
             }
 
@@ -488,7 +488,7 @@ namespace Inedo.Romp
                         RompConsoleMessenger.WriteDirect(text);
                 }
 
-                if(!any)
+                if (!any)
                     Console.WriteLine(" (none)");
             }
 
@@ -838,12 +838,13 @@ namespace Inedo.Romp
         private static void About(ArgList args)
         {
             Console.WriteLine("Components:");
-            var assemblyNames = new[] { "Inedo.SDK", "Inedo.ExecutionEngine", "Inedo.Agents.Client" };
+            var assemblyNames = new[] { "Inedo.SDK", "Inedo.ExecutionEngine", "Inedo.Agents.Client", "Inedo.UPack" };
             foreach (var asmName in assemblyNames)
             {
                 var asm = Assembly.Load(asmName);
                 var name = asm.GetName();
-                Console.WriteLine("  " + name.Name + " " + name.Version);
+                var info = FileVersionInfo.GetVersionInfo(asm.Location);
+                Console.WriteLine("  " + name.Name + " " + info.FileVersion);
             }
 
             Console.WriteLine();
@@ -859,7 +860,7 @@ namespace Inedo.Romp
                 }
             }
 
-            if(!anyExtensions)
+            if (!anyExtensions)
                 Console.WriteLine("  (no extensions loaded)");
         }
 
