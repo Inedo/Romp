@@ -5,6 +5,7 @@
     <LangVersion>latest</LangVersion>
 	<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <Prefer32Bit>false</Prefer32Bit>
+	<RootNamespace>Inedo.Romp</RootNamespace>
   </PropertyGroup>
   <PropertyGroup>
     <SignAssembly>true</SignAssembly>
