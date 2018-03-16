@@ -51,6 +51,9 @@ namespace Inedo.Romp.RompPack
 
                         foreach (var prop in varObj.Properties())
                             packageVariables[prop.Name] = new PackageVariable(prop.Value);
+
+                        if (!packageVariables.ContainsKey("TargetDirectory"))
+                            packageVariables.Add("TargetDirectory", PackageVariable.DefaultTargetDirectoryVariable);
                     }
                     catch (Exception ex)
                     {

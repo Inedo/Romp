@@ -368,8 +368,7 @@ namespace Inedo.Romp.Data
                     this.EndDate = new DateTimeOffset(reader.GetInt64(2), TimeSpan.Zero).ToLocalTime();
                 this.StatusCode = reader.GetString(3);
                 this.RunStateCode = reader.GetString(4);
-                this.ModeCode = reader.GetString(5);
-                this.Simulation = reader.GetBoolean(6);
+                this.Simulation = reader.GetBoolean(5);
             }
 
             public int ExecutionId { get; }
@@ -377,7 +376,6 @@ namespace Inedo.Romp.Data
             public DateTimeOffset? EndDate { get; }
             public string StatusCode { get; }
             public string RunStateCode { get; }
-            public string ModeCode { get; }
             public bool Simulation { get; }
         }
 

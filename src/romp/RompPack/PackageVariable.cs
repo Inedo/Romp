@@ -42,12 +42,20 @@ namespace Inedo.Romp.RompPack
                 this.Value = Convert(token);
             }
         }
+        private PackageVariable(PackageVariableType type, bool required, string description)
+        {
+            this.Type = type;
+            this.Required = required;
+            this.Description = description;
+        }
 
         public RuntimeValue? Value { get; }
         public string Description { get; }
         public bool Required { get; }
         public bool Sensitive { get; }
         public PackageVariableType Type { get; }
+
+        public static PackageVariable DefaultTargetDirectoryVariable => new PackageVariable(PackageVariableType.Text, true, "Directory to install the package contents.");
 
         private static RuntimeValue Convert(JToken token)
         {

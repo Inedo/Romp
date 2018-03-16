@@ -34,6 +34,6 @@ namespace Inedo.Romp
         public override IEnumerable<SDK.ServerRoleInfo> GetServerRoles() => Enumerable.Empty<SDK.ServerRoleInfo>();
         public override IEnumerable<SDK.ServerInfo> GetServersInEnvironment(int environmentId) => Enumerable.Empty<SDK.ServerInfo>();
         public override IEnumerable<SDK.ServerInfo> GetServersInRole(int roleId) => Enumerable.Empty<SDK.ServerInfo>();
-        public override RaftRepository CreateRaftRepository(string raftName, OpenRaftOptions options) => null;
+        public override RaftRepository CreateRaftRepository(string raftName, OpenRaftOptions options) => Factory.CreateRaftRepository(raftName, options);
     }
 }

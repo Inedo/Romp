@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Inedo.IO;
+using Inedo.Romp.Configuration;
 using Inedo.Romp.Data;
 using Inedo.UPack;
 using Inedo.UPack.Net;
@@ -20,7 +21,7 @@ namespace Inedo.Romp
         public string FileName { get; private set; }
         public UniversalFeedEndpoint Source { get; private set; }
         public UniversalPackageId PackageId { get; private set; }
-        public UniversalPackageVersion PackageVersion { get; private set; }
+        public UniversalPackageVersion PackageVersion { get; set; }
 
         public static PackageSpecifier FromArgs(ArgList args)
         {
@@ -40,7 +41,7 @@ namespace Inedo.Romp
 
                 inst.FileName = packageName;
             }
-            else if (inst.Source != null)
+            else
             {
                 try
                 {
@@ -50,10 +51,6 @@ namespace Inedo.Romp
                 {
                     throw new RompException("Invalid package name: " + packageName, ex);
                 }
-            }
-            else
-            {
-                throw new RompException("Missing --source.");
             }
 
             return inst;
@@ -74,22 +71,36 @@ namespace Inedo.Romp
 
         private async Task<Stream> FetchPackageStreamAsync(ArgList args, CancellationToken cancellationToken)
         {
+            if (this.PackageId != null && this.PackageVersion != null)
+            {
+                var cachedStream = await tryGetCached();
+                if (cachedStream != null)
+                    return cachedStream;
+            }
+
             if (this.FileName != null)
             {
                 if (File.Exists(this.FileName))
                 {
+                    FileStream fileStream;
                     try
                     {
-                        return new FileStream(this.FileName, FileMode.Open, FileAccess.Read, FileShare.Read);
+                        fileStream = new FileStream(this.FileName, FileMode.Open, FileAccess.Read, FileShare.Read);
                     }
-                    catch (FileNotFoundException)
+                    catch (IOException)
                     {
+                        goto FileNotFound;
                     }
-                    catch (DirectoryNotFoundException)
-                    {
-                    }
+
+                    this.VerifyAndPopulate(fileStream);
+                    fileStream.Position = 0;
+
+                    await addToCache(fileStream);
+                    fileStream.Position = 0;
+                    return fileStream;
                 }
 
+                FileNotFound:
                 throw new RompException("File not found: " + this.FileName);
             }
 
@@ -123,6 +134,13 @@ namespace Inedo.Romp
                     {
                         await remoteStream.CopyToAsync(tempStream, 81920, cancellationToken);
                         tempStream.Position = 0;
+
+                        this.VerifyAndPopulate(tempStream);
+                        tempStream.Position = 0;
+
+                        await addToCache(tempStream);
+                        tempStream.Position = 0;
+
                         return tempStream;
                     }
                     catch
@@ -134,6 +152,29 @@ namespace Inedo.Romp
             }
 
             throw new InvalidOperationException("Invalid package specification.");
+
+            async Task<Stream> tryGetCached()
+            {
+                return await PackageRegistry.GetRegistry(RompConfig.UserMode).TryOpenFromCacheAsync(
+                    this.PackageId,
+                    this.PackageVersion
+                );
+            }
+
+            async Task addToCache(Stream stream)
+            {
+                try
+                {
+                    using (var registry = PackageRegistry.GetRegistry(RompConfig.UserMode))
+                    {
+                        await registry.WriteToCacheAsync(this.PackageId, this.PackageVersion, stream);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    throw new RompException($"Could not add package to cache: " + ex.Message, ex);
+                }
+            }
         }
 
         public override string ToString()
@@ -141,13 +182,16 @@ namespace Inedo.Romp
             if (this.FileName != null)
                 return this.FileName;
 
-            if (this.Source != null && this.PackageId != null)
+            if (this.PackageId != null)
             {
                 var id = this.PackageId.ToString();
                 if (this.PackageVersion != null)
                     id += " " + this.PackageVersion;
 
-                return id + " from " + this.Source;
+                if (this.Source != null)
+                    return id + " from " + this.Source;
+
+                return id;
             }
 
             return string.Empty;
@@ -198,6 +242,36 @@ namespace Inedo.Romp
             }
 
             return false;
+        }
+
+        private void VerifyAndPopulate(Stream stream)
+        {
+            using (var package = open())
+            {
+                var id = new UniversalPackageId(package.Group, package.Name);
+
+                if (this.PackageId == null)
+                    this.PackageId = id;
+                else if (this.PackageId != id)
+                    throw new RompException("Package has an unexpected ID.");
+
+                if (this.PackageVersion == null)
+                    this.PackageVersion = package.Version;
+                else if (this.PackageVersion != package.Version)
+                    throw new RompException("Package has an unexpected version.");
+            }
+
+            UniversalPackage open()
+            {
+                try
+                {
+                    return new UniversalPackage(stream, true);
+                }
+                catch (Exception ex)
+                {
+                    throw new RompException("Invalid package: " + ex.Message, ex);
+                }
+            }
         }
     }
 }

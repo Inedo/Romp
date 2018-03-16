@@ -31,7 +31,6 @@ namespace Inedo.Romp
             try
             {
                 RompConsoleMessenger.WriteDirect("romp 2.0.0-M2", ConsoleColor.White);
-                RompConsoleMessenger.WriteDirect("** Prerelease software - use at your own risk **", ConsoleColor.Yellow);
 
                 var argList = new ArgList(args);
 
@@ -54,6 +53,9 @@ namespace Inedo.Romp
                 {
                     case "install":
                         await Install(argList);
+                        break;
+                    case "uninstall":
+                        await Uninstall(argList);
                         break;
                     case "validate":
                         Validate(argList);
@@ -103,6 +105,7 @@ namespace Inedo.Romp
             Console.WriteLine("Usage: romp <command>");
             Console.WriteLine("Commands:");
             Console.WriteLine("install");
+            Console.WriteLine("uninstall");
             Console.WriteLine("validate");
             Console.WriteLine("inspect");
             Console.WriteLine("pack");
@@ -112,6 +115,33 @@ namespace Inedo.Romp
             Console.WriteLine("config");
             Console.WriteLine("packages");
             Console.WriteLine("about");
+        }
+
+        private static async Task<RegisteredPackage> GetRegisteredPackageAsync(UniversalPackageId id)
+        {
+            using (var registry = PackageRegistry.GetRegistry(RompConfig.UserMode))
+            {
+                await registry.LockAsync();
+                var registeredPackage = (await registry.GetInstalledPackagesAsync())
+                    .FirstOrDefault(isMatch);
+
+                await registry.UnlockAsync();
+
+                return registeredPackage;
+
+                bool isMatch(RegisteredPackage p)
+                {
+                    try
+                    {
+                        var id2 = new UniversalPackageId(p.Group, p.Name);
+                        return id == id2;
+                    }
+                    catch
+                    {
+                        return false;
+                    }
+                }
+            }
         }
 
         private static async Task Install(ArgList args)
@@ -131,6 +161,16 @@ namespace Inedo.Romp
             using (var package = await spec.FetchPackageAsync(args, default))
             {
                 args.ProcessOptions(parseOption);
+
+                if (!force)
+                {
+                    var registeredPackage = await GetRegisteredPackageAsync(spec.PackageId);
+                    if (registeredPackage != null)
+                    {
+                        Console.WriteLine("Package is already installed. Use --force to install anyway.");
+                        return;
+                    }
+                }
 
                 foreach (var var in vars)
                     RompSessionVariable.SetSessionVariable(var.Key, var.Value);
@@ -189,20 +229,27 @@ namespace Inedo.Romp
                 if (credentialsMissing)
                     throw new RompException("Use \"romp credentials store\" to create missing credentials.");
 
-                await PackageInstaller.RunAsync(package, simulate);
+                await PackageInstaller.RunAsync(package, "install.otter", simulate);
 
-                await PackageRegistry.GetRegistry(RompConfig.UserMode).RegisterPackageAsync(
-                    new RegisteredPackage
-                    {
-                        Group = package.Group,
-                        Name = package.Name,
-                        Version = package.Version.ToString(),
-                        InstallationDate = DateTimeOffset.Now.ToString("o"),
-                        InstalledBy = Environment.UserName,
-                        InstalledUsing = "Romp"
-                    },
-                    CancellationToken.None
-                );
+                using (var registry = PackageRegistry.GetRegistry(RompConfig.UserMode))
+                {
+                    await registry.LockAsync();
+
+                    await registry.RegisterPackageAsync(
+                        new RegisteredPackage
+                        {
+                            Group = package.Group,
+                            Name = package.Name,
+                            Version = package.Version.ToString(),
+                            InstallationDate = DateTimeOffset.Now.ToString("o"),
+                            InstalledBy = Environment.UserName,
+                            InstalledUsing = "Romp",
+                            InstallPath = PackageInstaller.TargetDirectory
+                        }
+                    );
+
+                    await registry.UnlockAsync();
+                }
             }
 
             bool parseOption(ArgOption o)
@@ -218,6 +265,62 @@ namespace Inedo.Romp
                         return true;
                 }
 
+                if (o.Key.StartsWith("V") && o.Key.Length > 1)
+                {
+                    vars[o.Key.Substring(1)] = o.Value ?? string.Empty;
+                    return true;
+                }
+
+                return false;
+            }
+        }
+        private static async Task Uninstall(ArgList args)
+        {
+            var spec = PackageSpecifier.FromArgs(args);
+            if (spec == null)
+                throw new RompException("Usage: romp uninstall <package> [-Vvar=value...]");
+
+            Console.WriteLine("Package: " + spec);
+            Console.WriteLine();
+
+            var registeredPackage = await GetRegisteredPackageAsync(spec.PackageId);
+            if (registeredPackage == null)
+                throw new RompException("Package is not installed.");
+
+            spec.PackageVersion = UniversalPackageVersion.Parse(registeredPackage.Version);
+
+            await ExtensionsManager.WaitForInitializationAsync();
+
+            var vars = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            using (var package = await spec.FetchPackageAsync(args, default))
+            {
+                args.ProcessOptions(parseOption);
+
+                foreach (var var in vars)
+                    RompSessionVariable.SetSessionVariable(var.Key, var.Value);
+
+                var packageInfo = RompPackInfo.Load(package);
+                if (packageInfo.WriteScriptErrors())
+                    throw new RompException("Error compiling uninstall script.");
+
+                PackageInstaller.TargetDirectory = registeredPackage.InstallPath;
+                RompSessionVariable.SetSessionVariable("TargetDirectory", registeredPackage.InstallPath);
+
+                await PackageInstaller.RunAsync(package, "uninstall.otter", false);
+
+                using (var registry = PackageRegistry.GetRegistry(RompConfig.UserMode))
+                {
+                    await registry.LockAsync();
+
+                    await registry.UnregisterPackageAsync(registeredPackage);
+                    await registry.DeleteFromCacheAsync(spec.PackageId, package.Version);
+
+                    await registry.UnlockAsync();
+                }
+            }
+
+            bool parseOption(ArgOption o)
+            {
                 if (o.Key.StartsWith("V") && o.Key.Length > 1)
                 {
                     vars[o.Key.Substring(1)] = o.Value ?? string.Empty;

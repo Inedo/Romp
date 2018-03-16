@@ -13,6 +13,7 @@ using Inedo.Extensibility.Agents;
 using Inedo.Extensibility.Operations;
 using Inedo.Extensibility.VariableFunctions;
 using Inedo.IO;
+using Inedo.Romp.RompPack;
 
 namespace Inedo.Romp.RompExecutionEngine
 {
@@ -45,7 +46,7 @@ namespace Inedo.Romp.RompExecutionEngine
         int? IVariableFunctionContext.ServerId => 1;
 
         public RompExecutionContext WithExecuterContext(IExecuterContext executerContext) => new RompExecutionContext(this) { ExecuterContext = executerContext };
-        public RompExecutionContext WithDirectory(string directory) => new RompExecutionContext(this) { workingDirectoryOverride = directory };
+        public RompExecutionContext WithDirectory(string directory) => new RompExecutionContext(this) { workingDirectoryOverride = PathEx.Combine(this.WorkingDirectory, directory) };
 
         public Task<string> ApplyTextTemplateAsync(string text, IReadOnlyDictionary<string, RuntimeValue> additionalVariables)
         {
@@ -135,7 +136,9 @@ namespace Inedo.Romp.RompExecutionEngine
             if (!string.IsNullOrEmpty(work) && (work.StartsWith("~\\") || work.StartsWith("~/")))
                 work = this.workingDirectoryOverride.Substring(2);
 
-            var executionDirectory = PathEx.Combine(this.Agent.GetService<IFileOperationsExecuter>().GetBaseWorkingDirectory(), "_E" + this.ExecutionId);
+            var executionDirectory = PackageInstaller.TargetDirectory;
+            if (string.IsNullOrWhiteSpace(executionDirectory))
+                executionDirectory = PathEx.Combine(this.Agent.GetService<IFileOperationsExecuter>().GetBaseWorkingDirectory(), "_E" + this.ExecutionId);
 
             if (string.IsNullOrEmpty(work))
                 return executionDirectory;

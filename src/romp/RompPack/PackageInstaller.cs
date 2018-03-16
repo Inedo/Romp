@@ -8,16 +8,25 @@ using Inedo.ExecutionEngine;
 using Inedo.ExecutionEngine.Parser;
 using Inedo.Romp.Data;
 using Inedo.Romp.RompExecutionEngine;
+using Inedo.UPack;
 using Inedo.UPack.Packaging;
 
 namespace Inedo.Romp.RompPack
 {
     internal static class PackageInstaller
     {
-        public static string PackageContentsPath { get; private set; }
+        // these properties contain the global state available to some operations and variables
+        public static string TargetDirectory { get; set; }
+        public static string PackageRootPath { get; private set; }
+        public static string PackageContentsPath => Path.Combine(PackageRootPath, "package");
+        public static UniversalPackageId PackageId { get; private set; }
+        public static UniversalPackageVersion PackageVersion { get; private set; }
 
-        public static async Task RunAsync(UniversalPackage package, bool simulate)
+        public static async Task RunAsync(UniversalPackage package, string script, bool simulate)
         {
+            PackageId = new UniversalPackageId(package.Group, package.Name);
+            PackageVersion = package.Version;
+
             await ExtensionsManager.WaitForInitializationAsync().ConfigureAwait(false);
 
             var tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
@@ -27,12 +36,12 @@ namespace Inedo.Romp.RompPack
                 Console.WriteLine("Extracting package...");
                 await package.ExtractAllItemsAsync(tempPath, default);
 
-                var installScriptFileName = Path.Combine(tempPath, "install.otter");
+                var installScriptFileName = Path.Combine(tempPath, script);
                 var installScript = Compile(installScriptFileName);
                 if (installScript == null)
-                    throw new RompException("Unable to compile install.otter.");
+                    throw new RompException($"Unable to compile {script}.");
 
-                PackageContentsPath = Path.Combine(tempPath, "package");
+                PackageRootPath = tempPath;
                 await RunPlanAsync(installScript, simulate);
             }
             finally
@@ -45,8 +54,6 @@ namespace Inedo.Romp.RompPack
 
         private static async Task RunPlanAsync(ScopedStatementBlock script, bool simulate)
         {
-            RompRaftFactory.Initialize();
-
             if (simulate)
                 Console.WriteLine("Running as simulation");
 
@@ -94,13 +101,24 @@ namespace Inedo.Romp.RompPack
                     log.WriteErrors(Console.Out);
 
                 if (exec.StatusCode == Domains.ExecutionStatus.Normal)
+                {
                     RompConsoleMessenger.WriteDirect($"Job #{executer.ExecutionId} completed successfully.", ConsoleColor.White);
+                }
                 else if (exec.StatusCode == Domains.ExecutionStatus.Warning)
+                {
                     RompConsoleMessenger.WriteDirect($"Job #{executer.ExecutionId} completed with warnings.", ConsoleColor.Yellow);
+                }
                 else
+                {
                     RompConsoleMessenger.WriteDirect($"Job #{executer.ExecutionId} encountered an error.", ConsoleColor.Red);
+                    throw new RompException("Job execution failed.");
+                }
 
                 Console.WriteLine();
+            }
+            else
+            {
+                throw new RompException("Execution could not be created.");
             }
         }
         private static ScopedStatementBlock Compile(string planFile)

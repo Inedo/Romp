@@ -1,18 +1,23 @@
 ﻿using System;
+using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Inedo.Diagnostics;
 using Inedo.ExecutionEngine;
 using Inedo.ExecutionEngine.Executer;
+using Inedo.ExecutionEngine.Parser;
 using Inedo.ExecutionEngine.Variables;
 using Inedo.Extensibility.Operations;
+using Inedo.Extensibility.RaftRepositories;
 using Inedo.IO;
 using Inedo.Romp.Agents;
 using Inedo.Romp.Configuration;
 using Inedo.Romp.Data;
+using Inedo.Romp.RompPack;
 
 namespace Inedo.Romp.RompExecutionEngine
 {
-    internal sealed class RompExecutionEnvironment : IExecutionHostEnvironment //OtterPlanExecuterBase
+    internal sealed class RompExecutionEnvironment : IExecutionHostEnvironment
     {
         private ScopedStatementBlock plan;
 
@@ -22,24 +27,41 @@ namespace Inedo.Romp.RompExecutionEngine
             this.Simulation = simulate;
         }
 
-        public object DefaultExternalContext => throw new NotImplementedException();
-        public LocalAgent LocalAgent { get; }
+        public RompExecutionContext DefaultExternalContext { get; private set; }
+        public LocalAgent LocalAgent { get; } = new LocalAgent();
         public bool Simulation { get; }
         public int? ExecutionId { get; private set; }
         public bool LogToDatabase => true;
 
         private ExecuterThread Executer { get; set; }
 
+        object IExecutionHostEnvironment.DefaultExternalContext => this.DefaultExternalContext;
+
         public async Task ExecuteAsync()
         {
+            var startTime = DateTime.UtcNow;
+            this.ExecutionId = RompDb.CreateExecution(startTime, Domains.ExecutionStatus.Normal, Domains.ExecutionRunState.Executing, this.Simulation);
+            this.DefaultExternalContext = new RompExecutionContext(this);
+
             this.Executer = new ExecuterThread(new AnonymousBlockStatement(this.plan), this);
 
             var result = ExecutionStatus.Error;
-            var startTime = DateTime.UtcNow;
-            this.ExecutionId = RompDb.CreateExecution(startTime, Domains.ExecutionStatus.Normal, Domains.ExecutionRunState.Executing, this.Simulation);
             try
             {
-                result = await this.Executer.ExecuteAsync();
+                await RompSessionVariable.ExpandValuesAsync(this.DefaultExternalContext);
+
+                var targetDir = RompSessionVariable.GetSessionVariable(new RuntimeVariableName("TargetDirectory", RuntimeValueType.Scalar))?.GetValue().AsString();
+                if (string.IsNullOrWhiteSpace(targetDir) || !PathEx.IsPathRooted(targetDir))
+                {
+                    this.Executer.RootLogScope.Log(LogLevel.Error, "Invalid value for $TargetDirectory.");
+                    result = ExecutionStatus.Error;
+                }
+                else
+                {
+                    PackageInstaller.TargetDirectory = targetDir;
+                    DirectoryEx.Create(targetDir);
+                    result = await this.Executer.ExecuteAsync();
+                }
             }
             catch (Exception ex)
             {
@@ -160,7 +182,34 @@ namespace Inedo.Romp.RompExecutionEngine
             var rompContext = (RompExecutionContext)context.ExternalContext;
             return new RompVariableEvaluationContext(rompContext.WithExecuterContext(context), context);
         }
-        public NamedTemplate TryGetGlobalTemplate(string templateName) => RompRaftFactory.GetTemplate(templateName);
+        public async Task<NamedTemplate> TryGetGlobalTemplateAsync(string templateName)
+        {
+            var name = QualifiedName.Parse(templateName);
+
+            using (var raft = Factory.CreateRaftRepository(name.Namespace ?? RaftRepository.DefaultName, OpenRaftOptions.ReadOnly | OpenRaftOptions.OptimizeLoadTime))
+            {
+                if (raft != null)
+                {
+                    var rubbish = await raft.GetRaftItemsAsync();
+
+                    var template = await raft.GetRaftItemAsync(RaftItemType.Module, name.Name + ".otter");
+                    if (template != null)
+                    {
+                        using (var stream = await raft.OpenRaftItemAsync(RaftItemType.Module, template.ItemName, FileMode.Open, FileAccess.Read))
+                        {
+                            var results = Compiler.Compile(stream);
+                            if (results.Script != null)
+                                return results.Script.Templates.Values.FirstOrDefault();
+                            else
+                                throw new ExecutionFailureException($"Error processing template {name}: {string.Join(Environment.NewLine, results.Errors)}");
+                        }
+                    }
+                }
+            }
+
+            return null;
+        }
+
         public IRuntimeVariable TryGetGlobalVariable(RuntimeVariableName variableName, IExecuterContext context) => RompSessionVariable.GetSessionVariable(variableName);
 
         private void CleanTempDirectory()
@@ -168,5 +217,7 @@ namespace Inedo.Romp.RompExecutionEngine
             var tempDirectory = PathEx.Combine(RompConfig.DefaultWorkingDirectory, "_E" + this.ExecutionId);
             DirectoryEx.Delete(tempDirectory);
         }
+
+        NamedTemplate IExecutionHostEnvironment.TryGetGlobalTemplate(string templateName) => this.TryGetGlobalTemplateAsync(templateName).GetAwaiter().GetResult();
     }
 }
