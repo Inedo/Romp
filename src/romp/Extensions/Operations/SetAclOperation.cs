@@ -29,9 +29,7 @@ namespace Inedo.Romp.Extensions.Operations
             {
                 this.LogInformation($"Setting ACL on {this.Path} for {this.UserName}...");
                 var acl = Directory.GetAccessControl(this.Path);
-                acl.AddAccessRule(new FileSystemAccessRule(this.UserName, FileSystemRights.Read, AccessControlType.Allow));
-                acl.AddAccessRule(new FileSystemAccessRule(this.UserName, FileSystemRights.Write, AccessControlType.Allow));
-                acl.AddAccessRule(new FileSystemAccessRule(this.UserName, FileSystemRights.ListDirectory, AccessControlType.Allow));
+                acl.AddAccessRule(new FileSystemAccessRule(this.UserName, FileSystemRights.DeleteSubdirectoriesAndFiles | FileSystemRights.Modify | FileSystemRights.Synchronize, InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit, PropagationFlags.None, AccessControlType.Allow));
                 Directory.SetAccessControl(this.Path, acl);
             }
             catch (Exception ex)
