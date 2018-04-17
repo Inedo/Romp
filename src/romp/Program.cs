@@ -632,7 +632,7 @@ namespace Inedo.Romp
 
                 var now = DateTimeOffset.Now;
                 var executions = RompDb.GetExecutions()
-                    .Where(e => (int)e.StartDate.Subtract(now).TotalDays > days)
+                    .Where(e => (int)now.Subtract(e.StartDate).TotalDays >= days)
                     .ToList();
 
                 Console.WriteLine($"Purging logs for jobs older than {days} days.");
