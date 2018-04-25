@@ -54,7 +54,7 @@ namespace Inedo.Romp.Extensions.Operations
 
             if (!string.IsNullOrWhiteSpace(this.ConnectionString))
                 configFile.ConnectionString = this.ConnectionString;
-            if ((configFile.EncryptionKey?.Length ?? 0) > 0 && this.EncryptionKey != null)
+            if ((configFile.EncryptionKey?.Length ?? 0) == 0 && this.EncryptionKey != null)
                 configFile.EncryptionKey = this.EncryptionKey;
             if (this.WebServerEnabled != null)
                 configFile.WebServerEnabled = this.WebServerEnabled.Value;
