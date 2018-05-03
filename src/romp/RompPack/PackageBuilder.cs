@@ -7,7 +7,7 @@ namespace Inedo.Romp.RompPack
 {
     internal static class PackageBuilder
     {
-        public static void BuildPackage(string sourcePath, string packageFileName, bool force, bool overwrite)
+        public static void BuildPackage(string sourcePath, string packageFileName, bool overwrite)
         {
             if (string.IsNullOrEmpty(sourcePath))
                 throw new ArgumentNullException(nameof(sourcePath));
@@ -18,6 +18,9 @@ namespace Inedo.Romp.RompPack
             var upackPath = Path.Combine(sourcePath, "upack.json");
             if (!File.Exists(upackPath))
                 throw new RompException("upack.json not found in specified source directory.");
+
+            if (!File.Exists(Path.Combine(sourcePath, "install.otter")))
+                throw new RompException("install.otter not found in the specified source directory.");
 
             UpackMetadata upackInfo;
 
@@ -51,6 +54,10 @@ namespace Inedo.Romp.RompPack
             {
                 foreach (var sourceEntry in Directory.EnumerateFiles(sourcePath, "*.*", SearchOption.AllDirectories))
                 {
+                    // skip package itself if creating in source directory
+                    if (string.Equals(sourceEntry, packageFileName, StringComparison.OrdinalIgnoreCase))
+                        continue;
+
                     var entry = createZipEntry(sourceEntry);
                     using (var sourceStream = new FileStream(sourceEntry, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.SequentialScan))
                     using (var targetStream = entry.Open())

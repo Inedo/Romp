@@ -30,7 +30,7 @@ namespace Inedo.Romp
         {
             try
             {
-                RompConsoleMessenger.WriteDirect("romp 2.0.0-M2", ConsoleColor.White);
+                RompConsoleMessenger.WriteDirect("romp " + typeof(Program).Assembly.GetName().Version.ToString(3), ConsoleColor.White);
 
                 var argList = new ArgList(args);
 
@@ -148,7 +148,7 @@ namespace Inedo.Romp
         {
             var spec = PackageSpecifier.FromArgs(args);
             if (spec == null)
-                throw new RompException("Usage: romp install <package-file-or-name> [--version=<version-number>] [--source=<name-or-feed-url>] [--simulate] [--force] [-Vvar=value...]");
+                throw new RompException("Usage: romp install <package-file-or-name> [--version=<version-number>] [--source=<name-or-feed-url>] [--force] [-Vvar=value...]");
 
             Console.WriteLine("Package: " + spec);
             Console.WriteLine();
@@ -256,10 +256,6 @@ namespace Inedo.Romp
             {
                 switch (o.Key.ToLowerInvariant())
                 {
-                    case "simulate":
-                    case "simulation":
-                        simulate = true;
-                        return true;
                     case "force":
                         force = true;
                         return true;
@@ -407,25 +403,21 @@ namespace Inedo.Romp
         {
             var source = args.PopCommand();
             if (string.IsNullOrEmpty(source))
-                throw new RompException("Usage: romp pack <source-directory> [output-file-name] [--force] [--overwrite]");
+                throw new RompException("Usage: romp pack <source-directory> [output-file-name] [--overwrite]");
 
             var packageName = args.PopCommand();
 
-            bool force = false;
             bool overwrite = false;
 
             args.ProcessOptions(parseOption);
             args.ThrowIfAnyRemaining();
 
-            PackageBuilder.BuildPackage(Path.GetFullPath(source), packageName, force, overwrite);
+            PackageBuilder.BuildPackage(Path.GetFullPath(source), packageName, overwrite);
 
             bool parseOption(ArgOption o)
             {
                 switch (o.Key.ToLowerInvariant())
                 {
-                    case "force":
-                        force = true;
-                        return true;
                     case "overwrite":
                         overwrite = true;
                         return true;
