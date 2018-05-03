@@ -440,11 +440,18 @@ namespace Inedo.Romp
                 case "create":
                     create();
                     break;
+                case "delete":
+                    delete();
+                    break;
+                case "default":
+                    defaultCommand();
+                    break;
                 default:
                     Console.WriteLine("Usage:");
                     Console.WriteLine("romp sources list");
                     Console.WriteLine("romp sources display <name> [--show-hidden]");
                     Console.WriteLine("romp sources create <name> <url>");
+                    Console.WriteLine("romp sources delete <name>");
                     break;
             }
 
@@ -537,6 +544,32 @@ namespace Inedo.Romp
 
                 RompDb.CreateOrUpdatePackageSource(name, sanitizedUrl.ToString(), userName, password);
                 Console.WriteLine("Package source stored.");
+            }
+
+            void delete()
+            {
+                var name = args.PopCommand();
+                if (string.IsNullOrEmpty(name))
+                    throw new RompException("Expected source name.");
+
+                RompDb.DeletePackageSource(name);
+                Console.WriteLine("Package source deleted.");
+
+                if (string.Equals(RompConfig.DefaultSource, name, StringComparison.OrdinalIgnoreCase))
+                    RompConfig.DeleteValue("default-source");
+            }
+
+            void defaultCommand()
+            {
+                var name = args.PopCommand();
+                if (string.IsNullOrEmpty(name))
+                    throw new RompException("Expected source name.");
+
+                if (!RompDb.GetPackageSources().Any(s => string.Equals(s.Name, name, StringComparison.OrdinalIgnoreCase)))
+                    throw new RompException($"No source named {name} has been configured.");
+
+                RompConfig.SetValue("default-source", name);
+                Console.WriteLine($"Default source set to {name}.");
             }
         }
         private static void Jobs(ArgList args)
@@ -673,10 +706,10 @@ namespace Inedo.Romp
 
             void display()
             {
-                var n = parseQualifiedName();
-                var creds = RompDb.GetCredentialsByName(n.type, n.name);
+                var (type, name) = parseQualifiedName();
+                var creds = RompDb.GetCredentialsByName(type, name);
                 if (creds == null)
-                    throw new RompException($"Credentials {n.type}::{n.name} not found.");
+                    throw new RompException($"Credentials {type}::{name} not found.");
 
                 bool showHidden = false;
                 args.ProcessOptions(
@@ -785,8 +818,8 @@ namespace Inedo.Romp
 
             void delete()
             {
-                var n = parseQualifiedName();
-                RompDb.DeleteCredentials(n.type, n.name);
+                var (type, name) = parseQualifiedName();
+                RompDb.DeleteCredentials(type, name);
                 Console.WriteLine("Credentials deleted.");
             }
 
@@ -816,6 +849,9 @@ namespace Inedo.Romp
                     break;
                 case "set":
                     set();
+                    break;
+                case "delete":
+                    delete();
                     break;
                 default:
                     Console.WriteLine("Usage:");
@@ -896,6 +932,26 @@ namespace Inedo.Romp
 
             void set()
             {
+                var key = args.PopCommand();
+                if (string.IsNullOrWhiteSpace(key))
+                    throw new RompException("Usage: romp config set <key> <value>");
+
+                var value = args.PopCommand();
+                if (string.IsNullOrWhiteSpace(value))
+                    throw new RompException("Usage: romp config set <key> <value>");
+
+                RompConfig.SetValue(key, value);
+                Console.WriteLine("Config value set.");
+            }
+
+            void delete()
+            {
+                var key = args.PopCommand();
+                if (string.IsNullOrWhiteSpace(key))
+                    throw new RompException("Usage: romp config delete <key>");
+
+                RompConfig.DeleteValue(key);
+                Console.WriteLine("Config value deleted.");
             }
         }
         private static async Task Packages(ArgList args)

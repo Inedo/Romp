@@ -15,6 +15,7 @@ namespace Inedo.Romp.Configuration
         private JSValue<MessageLevel?> logLevel;
         private JSValue<string> extensionsPath;
         private JSValue<string> extensionsTempPath;
+        private JSValue<string> defaultSource;
 
         [JsonProperty("store-logs")]
         public bool? StoreLogs
@@ -63,6 +64,13 @@ namespace Inedo.Romp.Configuration
         {
             get => this.extensionsTempPath.Value;
             set => this.extensionsTempPath = value;
+        }
+
+        [JsonProperty("default-source")]
+        public string DefaultSource
+        {
+            get => this.defaultSource.Value;
+            set => this.defaultSource = value;
         }
 
         [NotCascaded]

@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using Inedo.Diagnostics;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Inedo.Romp.Configuration
 {
@@ -24,6 +25,7 @@ namespace Inedo.Romp.Configuration
         public static IReadOnlyDictionary<string, string> Rafts => Values.Rafts;
         public static bool StoreLogs => Values.StoreLogs.Value;
         public static MessageLevel LogLevel => Values.LogLevel.Value;
+        public static string DefaultSource => Values.DefaultSource;
 
         public static void Initialize(ArgList args)
         {
@@ -55,6 +57,57 @@ namespace Inedo.Romp.Configuration
                     ExtensionsTempPath = Path.Combine(path, "temp", "extensions"),
                     Rafts = new Dictionary<string, string>()
                 };
+            }
+        }
+        public static void SetValue(string name, string value)
+        {
+            var path = Path.Combine(UserMode == true ? UserConfigPath : MachineConfigPath, "rompconfig.json");
+            JObject obj;
+            if (File.Exists(path))
+            {
+                using (var reader = new StreamReader(path, InedoLib.UTF8Encoding))
+                using (var jsonReader = new JsonTextReader(reader))
+                {
+                    obj = JObject.Load(jsonReader);
+                }
+            }
+            else
+            {
+                obj = new JObject();
+            }
+
+            obj["name"] = value;
+
+            using (var writer = new StreamWriter(path, false, InedoLib.UTF8Encoding, 16))
+            using (var jsonWriter = new JsonTextWriter(writer) { Formatting = Formatting.Indented })
+            {
+                obj.WriteTo(jsonWriter);
+            }
+        }
+        public static void DeleteValue(string name)
+        {
+            var path = Path.Combine(UserMode == true ? UserConfigPath : MachineConfigPath, "rompconfig.json");
+            JObject obj;
+            if (File.Exists(path))
+            {
+                using (var reader = new StreamReader(path, InedoLib.UTF8Encoding))
+                using (var jsonReader = new JsonTextReader(reader))
+                {
+                    obj = JObject.Load(jsonReader);
+                }
+            }
+            else
+            {
+                obj = new JObject();
+            }
+
+            if (obj.Remove(name))
+            {
+                using (var writer = new StreamWriter(path, false, InedoLib.UTF8Encoding, 16))
+                using (var jsonWriter = new JsonTextWriter(writer) { Formatting = Formatting.Indented })
+                {
+                    obj.WriteTo(jsonWriter);
+                }
             }
         }
 

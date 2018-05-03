@@ -32,6 +32,22 @@ namespace Inedo.Romp
             var inst = new PackageSpecifier();
             args.ProcessOptions(inst.ParseOption);
 
+            // set source to default if not already specified
+            if (inst.Source == null && !string.IsNullOrWhiteSpace(RompConfig.DefaultSource))
+            {
+                var match = RompDb.GetPackageSources()
+                    .FirstOrDefault(s => string.Equals(s.Name, RompConfig.DefaultSource, StringComparison.OrdinalIgnoreCase));
+
+                if (match != null)
+                {
+                    if (string.IsNullOrEmpty(match.UserName) || match.Password == null)
+                        inst.Source = new UniversalFeedEndpoint(match.FeedUrl, true);
+                    else
+                        inst.Source = new UniversalFeedEndpoint(new Uri(match.FeedUrl), match.UserName, match.Password);
+                }
+            }
+
+
             if (packageName.EndsWith(".upack", StringComparison.OrdinalIgnoreCase))
             {
                 if (inst.Source != null)

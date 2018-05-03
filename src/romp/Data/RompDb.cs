@@ -308,6 +308,19 @@ namespace Inedo.Romp.Data
                 }
             }
         }
+        public static void DeletePackageSource(string name)
+        {
+            using (var conn = new SQLiteConnection(ConnectionString))
+            {
+                conn.Open();
+
+                using (var cmd = new SQLiteCommand(GetScript(), conn))
+                {
+                    cmd.Parameters.AddWithValue("@PackageSource_Name", name);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
 
         private static string GetScript([CallerMemberName] string name = null)
         {
