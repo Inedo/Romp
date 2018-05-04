@@ -49,6 +49,9 @@ namespace Inedo.Romp.RompPack
             if (!overwrite && File.Exists(packageFileName))
                 throw new RompException($"File {packageFileName} already exists. Use the --overwrite flag if you mean to overwrite it.");
 
+            // make sure we have an absolute path
+            packageFileName = Path.Combine(Environment.CurrentDirectory, packageFileName);
+
             Console.WriteLine($"Creating {packageFileName} package...");
             using (var zipArchiveFile = new ZipArchive(File.Create(packageFileName), ZipArchiveMode.Create))
             {
