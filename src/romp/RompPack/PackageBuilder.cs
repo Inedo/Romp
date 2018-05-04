@@ -41,7 +41,7 @@ namespace Inedo.Romp.RompPack
             if (string.IsNullOrWhiteSpace(upackInfo.Version))
                 throw new RompException("Invalid upack.json file: \"version\" property is missing or invalid.");
 
-            Console.WriteLine($"upack.json loaded (group: {upackInfo.Group}, name: {upackInfo.Name}, version: {upackInfo.Version})");
+            Console.WriteLine($"upack.json loaded (group: {AH.CoalesceString(upackInfo.Group, "(none)")}, name: {upackInfo.Name}, version: {upackInfo.Version})");
 
             if (string.IsNullOrEmpty(packageFileName))
                 packageFileName = upackInfo.Name + "-" + upackInfo.Version + ".upack";
