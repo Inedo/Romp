@@ -23,7 +23,7 @@
     <PackageReference Include="Inedo.Agents" Version="40.1.0" />
     <PackageReference Include="Inedo.Agents.Client" Version="528.0.0" />
     <PackageReference Include="Inedo.ExecutionEngine" Version="64.0.0" />
-    <PackageReference Include="Inedo.SDK.DevOnly" Version="1.0.4" />
+    <PackageReference Include="Inedo.SDK.DevOnly" Version="1.0.5-pre0003" />
     <PackageReference Include="Inedo.UPack" Version="0.1.0-pre0032" />
     <PackageReference Include="InedoLib" Version="528.0.0" />
     <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
