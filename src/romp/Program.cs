@@ -7,7 +7,6 @@ using System.Linq;
 using System.Reflection;
 using System.Security;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using Inedo.Diagnostics;
 using Inedo.ExecutionEngine;
@@ -1006,7 +1005,7 @@ namespace Inedo.Romp
             {
                 if (ext.LoadResult.Loaded)
                 {
-                    Console.WriteLine("  " + ext.Name + " " + ext.LoadResult.AssemblyVersion);
+                    Console.WriteLine("  " + ext.Name + " " + ext.LoadResult.Version);
                     anyExtensions = true;
                 }
             }
