@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Inedo.Agents;
@@ -11,6 +10,7 @@ using Inedo.ExecutionEngine.Templating;
 using Inedo.ExecutionEngine.Variables;
 using Inedo.Extensibility.Agents;
 using Inedo.Extensibility.Operations;
+using Inedo.Extensibility.RaftRepositories;
 using Inedo.Extensibility.VariableFunctions;
 using Inedo.IO;
 using Inedo.Romp.RompPack;
@@ -126,6 +126,8 @@ namespace Inedo.Romp.RompExecutionEngine
 
             return this.ExecuterContext?.GetVariableValue(variableName);
         }
+
+        public Task<RaftRepository> OpenRaftAsync(string raftName, OpenRaftOptions options) => Task.FromResult(Factory.CreateRaftRepository(raftName, options));
 
         private string DetermineWorkingDirectory()
         {

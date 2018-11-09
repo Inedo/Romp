@@ -210,7 +210,7 @@ namespace Inedo.Romp.RompExecutionEngine
             return null;
         }
 
-        public IRuntimeVariable TryGetGlobalVariable(RuntimeVariableName variableName, IExecuterContext context) => RompSessionVariable.GetSessionVariable(variableName);
+        public Task<IRuntimeVariable> TryGetGlobalVariableAsync(RuntimeVariableName variableName, IExecuterContext context) => Task.FromResult<IRuntimeVariable>(RompSessionVariable.GetSessionVariable(variableName));
 
         private void CleanTempDirectory()
         {
@@ -218,6 +218,6 @@ namespace Inedo.Romp.RompExecutionEngine
             DirectoryEx.Delete(tempDirectory);
         }
 
-        NamedTemplate IExecutionHostEnvironment.TryGetGlobalTemplate(string templateName) => this.TryGetGlobalTemplateAsync(templateName).GetAwaiter().GetResult();
+        Task<NamedTemplate> IExecutionHostEnvironment.TryGetGlobalTemplateAsync(string templateName, IExecuterContext context) => this.TryGetGlobalTemplateAsync(templateName);
     }
 }

@@ -20,14 +20,14 @@
     <None Remove="Data\Scripts\DeletePackageSource.sql" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Inedo.Agents" Version="40.1.0" />
-    <PackageReference Include="Inedo.Agents.Client" Version="529.0.0" />
-    <PackageReference Include="Inedo.ExecutionEngine" Version="65.0.0" />
-    <PackageReference Include="Inedo.SDK.DevOnly" Version="1.0.5" />
-    <PackageReference Include="Inedo.UPack" Version="1.0.0" />
-    <PackageReference Include="InedoLib" Version="529.0.0" />
+    <PackageReference Include="Inedo.Agents" Version="41.1.0" />
+    <PackageReference Include="Inedo.Agents.Client" Version="531.0.0" />
+    <PackageReference Include="Inedo.ExecutionEngine" Version="67.0.0" />
+    <PackageReference Include="Inedo.SDK.DevOnly" Version="1.0.7" />
+    <PackageReference Include="Inedo.UPack" Version="1.0.2" />
+    <PackageReference Include="InedoLib" Version="531.0.0" />
     <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
-    <PackageReference Include="System.Data.SQLite.Core" Version="1.0.108" />
+    <PackageReference Include="System.Data.SQLite.Core" Version="1.0.109.2" />
     <PackageReference Include="System.ValueTuple" Version="4.5.0" />
   </ItemGroup>
   <ItemGroup>
