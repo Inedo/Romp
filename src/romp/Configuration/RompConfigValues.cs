@@ -103,6 +103,7 @@ namespace Inedo.Romp.Configuration
                 logLevel = a.logLevel.Coalesce(b.logLevel, coalesceNull),
                 extensionsPath = a.extensionsPath.Coalesce(b.extensionsPath, coalesceNull),
                 extensionsTempPath = a.extensionsTempPath.Coalesce(b.extensionsTempPath, coalesceNull),
+                ceipEnabled = a.ceipEnabled.Coalesce(b.ceipEnabled, coalesceNull),
                 Rafts = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             };
 
