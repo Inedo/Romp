@@ -127,6 +127,8 @@ namespace Inedo.Romp.RompExecutionEngine
             return this.ExecuterContext?.GetVariableValue(variableName);
         }
 
+        public Task<TService> TryGetServiceAsync<TService>() where TService : class => null;
+
         public Task<RaftRepository> OpenRaftAsync(string raftName, OpenRaftOptions options) => Task.FromResult(Factory.CreateRaftRepository(raftName, options));
 
         private string DetermineWorkingDirectory()
@@ -147,5 +149,6 @@ namespace Inedo.Romp.RompExecutionEngine
             else
                 return PathEx.Combine(executionDirectory, work);
         }
-    }
+
+   }
 }

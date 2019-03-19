@@ -12,6 +12,7 @@ namespace Inedo.Romp.Configuration
         private JSValue<bool?> cachePackages;
         private JSValue<bool?> userMode;
         private JSValue<bool?> secureCredentials;
+        private JSValue<bool?> ceipEnabled;
         private JSValue<MessageLevel?> logLevel;
         private JSValue<string> extensionsPath;
         private JSValue<string> extensionsTempPath;
@@ -50,6 +51,13 @@ namespace Inedo.Romp.Configuration
         {
             get => this.secureCredentials.Value;
             set => this.secureCredentials = value;
+        }
+
+        [JsonProperty("ceip-enabled")]
+        public bool? CeipEnabled
+        {
+            get => this.ceipEnabled.Value;
+            set => this.ceipEnabled = value;
         }
 
         [JsonProperty("extensions-path")]

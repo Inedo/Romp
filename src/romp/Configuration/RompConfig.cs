@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Gibraltar.Agent;
+using Gibraltar.Agent.Configuration;
 using Inedo.Diagnostics;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -26,6 +28,7 @@ namespace Inedo.Romp.Configuration
         public static bool StoreLogs => Values.StoreLogs.Value;
         public static MessageLevel LogLevel => Values.LogLevel.Value;
         public static string DefaultSource => Values.DefaultSource;
+        public static bool CeipEnabled => Values.CeipEnabled ?? false;
 
         public static void Initialize(ArgList args)
         {
@@ -40,6 +43,9 @@ namespace Inedo.Romp.Configuration
 
             OverriddenValues = overridden;
             Values = RompConfigValues.Merge(overridden, getDefaults(), true);
+
+            if (CeipEnabled)
+                InitializeLoupe();
 
             RompConfigValues getDefaults()
             {
@@ -199,6 +205,22 @@ namespace Inedo.Romp.Configuration
                 result = RompConfigValues.Merge(result, c, false);
 
             return result;
+        }
+
+        private static void InitializeLoupe()
+        {
+            if (CeipEnabled)
+            {
+                var config = new AgentConfiguration();
+                config.Publisher.ProductName = "Romp";
+                config.Publisher.ApplicationName = "Romp";
+                config.Publisher.ApplicationVersion = typeof(RompConfig).Assembly.GetName().Version;
+                config.Server.CustomerName = "Inedo";
+                config.Server.AutoSendSessions = true;
+                config.Server.SendAllApplications = true;
+                config.Server.UseGibraltarService = true;
+                Log.StartSession(config);
+            }
         }
     }
 }

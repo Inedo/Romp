@@ -26,23 +26,36 @@ namespace Inedo.Romp.Data
         {
             if (!File.Exists(RompConfig.DataFilePath))
             {
-                Directory.CreateDirectory(RompConfig.ConfigDataPath);
-
-                var str = new SQLiteConnectionStringBuilder
+                var metric = Start();
+                try
                 {
-                    DataSource = RompConfig.DataFilePath,
-                    FailIfMissing = false,
-                    ForeignKeys = true
-                }.ToString();
+                    Directory.CreateDirectory(RompConfig.ConfigDataPath);
 
-                using (var conn = new SQLiteConnection(str))
-                {
-                    conn.Open();
-
-                    using (var cmd = new SQLiteCommand(GetScript(), conn))
+                    var str = new SQLiteConnectionStringBuilder
                     {
-                        cmd.ExecuteNonQuery();
+                        DataSource = RompConfig.DataFilePath,
+                        FailIfMissing = false,
+                        ForeignKeys = true
+                    }.ToString();
+
+                    using (var conn = new SQLiteConnection(str))
+                    {
+                        conn.Open();
+
+                        using (var cmd = new SQLiteCommand(GetScript(), conn))
+                        {
+                            cmd.ExecuteNonQuery();
+                        }
                     }
+                }
+                catch (Exception ex)
+                {
+                    metric.Error = ex;
+                    throw;
+                }
+                finally
+                {
+                    metric.Write();
                 }
             }
         }
@@ -51,19 +64,32 @@ namespace Inedo.Romp.Data
             if (!RompConfig.StoreLogs)
                 return 1;
 
-            using (var conn = new SQLiteConnection(ConnectionString))
+            var metric = Start();
+            try
             {
-                conn.Open();
-
-                using (var cmd = new SQLiteCommand(GetScript(), conn))
+                using (var conn = new SQLiteConnection(ConnectionString))
                 {
-                    cmd.Parameters.AddWithValue("@Start_Date", startDate.Ticks);
-                    cmd.Parameters.AddWithValue("@ExecutionStatus_Code", statusCode);
-                    cmd.Parameters.AddWithValue("@ExecutionRunState_Code", runStateCode);
-                    cmd.Parameters.AddWithValue("@Simulation_Indicator", simulation ? 1 : 0);
+                    conn.Open();
 
-                    return checked((int)(long)cmd.ExecuteScalar());
+                    using (var cmd = new SQLiteCommand(GetScript(), conn))
+                    {
+                        cmd.Parameters.AddWithValue("@Start_Date", startDate.Ticks);
+                        cmd.Parameters.AddWithValue("@ExecutionStatus_Code", statusCode);
+                        cmd.Parameters.AddWithValue("@ExecutionRunState_Code", runStateCode);
+                        cmd.Parameters.AddWithValue("@Simulation_Indicator", simulation ? 1 : 0);
+
+                        return checked((int)(long)cmd.ExecuteScalar());
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                metric.Error = ex;
+                throw;
+            }
+            finally
+            {
+                metric.Write();
             }
         }
         public static void CompleteExecution(int executionId, DateTime endDate, string statusCode)
@@ -71,31 +97,57 @@ namespace Inedo.Romp.Data
             if (!RompConfig.StoreLogs)
                 return;
 
-            using (var conn = new SQLiteConnection(ConnectionString))
+            var metric = Start();
+            try
             {
-                conn.Open();
-
-                using (var cmd = new SQLiteCommand(GetScript(), conn))
+                using (var conn = new SQLiteConnection(ConnectionString))
                 {
-                    cmd.Parameters.AddWithValue("@Execution_Id", executionId);
-                    cmd.Parameters.AddWithValue("@End_Date", endDate.Ticks);
-                    cmd.Parameters.AddWithValue("@ExecutionStatus_Code", statusCode);
+                    conn.Open();
 
-                    cmd.ExecuteNonQuery();
+                    using (var cmd = new SQLiteCommand(GetScript(), conn))
+                    {
+                        cmd.Parameters.AddWithValue("@Execution_Id", executionId);
+                        cmd.Parameters.AddWithValue("@End_Date", endDate.Ticks);
+                        cmd.Parameters.AddWithValue("@ExecutionStatus_Code", statusCode);
+
+                        cmd.ExecuteNonQuery();
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                metric.Error = ex;
+                throw;
+            }
+            finally
+            {
+                metric.Write();
             }
         }
         public static void DeleteExecution(int executionId)
         {
-            using (var conn = new SQLiteConnection(ConnectionString))
+            var metric = Start();
+            try
             {
-                conn.Open();
-
-                using (var cmd = new SQLiteCommand(GetScript(), conn))
+                using (var conn = new SQLiteConnection(ConnectionString))
                 {
-                    cmd.Parameters.AddWithValue("@Execution_Id", executionId);
-                    cmd.ExecuteNonQuery();
+                    conn.Open();
+
+                    using (var cmd = new SQLiteCommand(GetScript(), conn))
+                    {
+                        cmd.Parameters.AddWithValue("@Execution_Id", executionId);
+                        cmd.ExecuteNonQuery();
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                metric.Error = ex;
+                throw;
+            }
+            finally
+            {
+                metric.Write();
             }
         }
         public static int CreateLogScope(int executionId, int? parentScopeSequence, string scopeName, DateTime startDate)
@@ -103,19 +155,32 @@ namespace Inedo.Romp.Data
             if (!RompConfig.StoreLogs)
                 return 0;
 
-            using (var conn = new SQLiteConnection(ConnectionString))
+            var metric = Start();
+            try
             {
-                conn.Open();
-
-                using (var cmd = new SQLiteCommand(createLogScopeSql.Value, conn))
+                using (var conn = new SQLiteConnection(ConnectionString))
                 {
-                    cmd.Parameters.AddWithValue("@Execution_Id", executionId);
-                    cmd.Parameters.AddWithValue("@Parent_Scope_Sequence", parentScopeSequence);
-                    cmd.Parameters.AddWithValue("@Scope_Name", scopeName);
-                    cmd.Parameters.AddWithValue("@Start_Date", startDate.Ticks);
+                    conn.Open();
 
-                    return checked((int)(long)cmd.ExecuteScalar());
+                    using (var cmd = new SQLiteCommand(createLogScopeSql.Value, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@Execution_Id", executionId);
+                        cmd.Parameters.AddWithValue("@Parent_Scope_Sequence", parentScopeSequence);
+                        cmd.Parameters.AddWithValue("@Scope_Name", scopeName);
+                        cmd.Parameters.AddWithValue("@Start_Date", startDate.Ticks);
+
+                        return checked((int)(long)cmd.ExecuteScalar());
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                metric.Error = ex;
+                throw;
+            }
+            finally
+            {
+                metric.Write();
             }
         }
         public static void CompleteLogScope(int executionId, int scopeSequence, DateTime endDate)
@@ -123,40 +188,65 @@ namespace Inedo.Romp.Data
             if (!RompConfig.StoreLogs)
                 return;
 
-            using (var conn = new SQLiteConnection(ConnectionString))
+            var metric = Start();
+            try
             {
-                conn.Open();
-
-                using (var cmd = new SQLiteCommand(completeLogScopeSql.Value, conn))
+                using (var conn = new SQLiteConnection(ConnectionString))
                 {
-                    cmd.Parameters.AddWithValue("@Execution_Id", executionId);
-                    cmd.Parameters.AddWithValue("@Scope_Sequence", scopeSequence);
-                    cmd.Parameters.AddWithValue("@End_Date", endDate.Ticks);
+                    conn.Open();
 
-                    cmd.ExecuteNonQuery();
+                    using (var cmd = new SQLiteCommand(completeLogScopeSql.Value, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@Execution_Id", executionId);
+                        cmd.Parameters.AddWithValue("@Scope_Sequence", scopeSequence);
+                        cmd.Parameters.AddWithValue("@End_Date", endDate.Ticks);
+
+                        cmd.ExecuteNonQuery();
+                    }
                 }
             }
-
+            catch (Exception ex)
+            {
+                metric.Error = ex;
+                throw;
+            }
+            finally
+            {
+                metric.Write();
+            }
         }
         public static void WriteLogMessage(int executionId, int scopeSequence, int level, string message, DateTime date)
         {
             if (!RompConfig.StoreLogs)
                 return;
 
-            using (var conn = new SQLiteConnection(ConnectionString))
+            var metric = Start();
+            try
             {
-                conn.Open();
-
-                using (var cmd = new SQLiteCommand(writeLogMessageSql.Value, conn))
+                using (var conn = new SQLiteConnection(ConnectionString))
                 {
-                    cmd.Parameters.AddWithValue("@Execution_Id", executionId);
-                    cmd.Parameters.AddWithValue("@Scope_Sequence", scopeSequence);
-                    cmd.Parameters.AddWithValue("@LogEntry_Level", level);
-                    cmd.Parameters.AddWithValue("@LogEntry_Text", message);
-                    cmd.Parameters.AddWithValue("@LogEntry_Date", date.Ticks);
+                    conn.Open();
 
-                    cmd.ExecuteNonQuery();
+                    using (var cmd = new SQLiteCommand(writeLogMessageSql.Value, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@Execution_Id", executionId);
+                        cmd.Parameters.AddWithValue("@Scope_Sequence", scopeSequence);
+                        cmd.Parameters.AddWithValue("@LogEntry_Level", level);
+                        cmd.Parameters.AddWithValue("@LogEntry_Text", message);
+                        cmd.Parameters.AddWithValue("@LogEntry_Date", date.Ticks);
+
+                        cmd.ExecuteNonQuery();
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                metric.Error = ex;
+                throw;
+            }
+            finally
+            {
+                metric.Write();
             }
         }
         public static IEnumerable<ExecutionData> GetExecutions()
@@ -370,6 +460,8 @@ namespace Inedo.Romp.Data
                 AllowFunctionAccess_Indicator = reader.GetInt32(4) != 0
             };
         }
+
+        private static DbEventMetric Start([CallerMemberName] string scriptName = null) => new DbEventMetric(scriptName);
 
         public sealed class ExecutionData
         {

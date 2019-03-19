@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Gibraltar.Agent.Metrics;
 using Inedo.Diagnostics;
 using Inedo.ExecutionEngine;
 using Inedo.ExecutionEngine.Executer;
@@ -93,69 +95,79 @@ namespace Inedo.Romp.RompExecutionEngine
         public ActiveNamedScope CreateLogScope(ScopeIdentifier current, ActiveNamedScope parent) => new RompScopedLogger(this, current, parent);
         public async Task<ActionExecutionResult> ExecuteActionAsync(ActionStatement actionStatement, IExecuterContext context)
         {
-            var rompContext = ((RompExecutionContext)context.ExternalContext).WithExecuterContext(context);
-
-            var operationType = ExtensionsManager.TryGetOperation(actionStatement.ActionName.Namespace, actionStatement.ActionName.Name);
-            if (operationType == null)
-            {
-                context.LogScope.Log(LogLevel.Error, $"Unable to resolve operation \"{actionStatement.ActionName}\". A Hedgehog extension may be missing.");
-                return ExecutionStatus.Fault;
-            }
-
-            var operation = (Operation)Activator.CreateInstance(operationType);
-            await ScriptPropertyMapper.SetPropertiesAsync(operation, actionStatement, rompContext, context);
-
-            var loggedStatus = ExecutionStatus.Normal;
-            var logScopeName = Operation.GetLogScopeName(operationType, actionStatement);
-            var scopedLogger = new RompScopedLogger(this, context.LogScope.Current.Push(logScopeName), context.LogScope);
-            scopedLogger.BeginScope();
-
-            operation.MessageLogged +=
-                (s, e) =>
-                {
-                    if (e.Level >= MessageLevel.Warning && loggedStatus < ExecutionStatus.Error)
-                    {
-                        if (e.Level == MessageLevel.Error)
-                            loggedStatus = ExecutionStatus.Error;
-                        else if (e.Level == MessageLevel.Warning)
-                            loggedStatus = ExecutionStatus.Warning;
-                    }
-
-                    scopedLogger.Log(e.Level, e.Message);
-                };
-
+            var metric = new OtterScriptOperationEventMetric(actionStatement.ActionName.FullName);
             try
             {
-                var asyncOperation = operation as IExecutingOperation ?? throw new InvalidOperationException();
+                var rompContext = ((RompExecutionContext)context.ExternalContext).WithExecuterContext(context);
 
-                context.SetReportProgressDelegate(() => operation.GetProgress()?.StatementProgress ?? default);
-                await asyncOperation.ExecuteAsync(rompContext).ConfigureAwait(false);
-
-                ScriptPropertyMapper.ReadOutputs(operation, actionStatement.OutArguments, context);
-
-                return loggedStatus;
-            }
-            catch (ExecutionFailureException ex)
-            {
-                if (!string.IsNullOrEmpty(ex.Message))
-                    operation.LogError(ex.Message);
-
-                throw new ExecutionFailureException(ex.Message);
-            }
-            catch (Exception ex)
-            {
-                if (ex is OperationCanceledException)
+                var operationType = ExtensionsManager.TryGetOperation(actionStatement.ActionName.Namespace, actionStatement.ActionName.Name);
+                if (operationType == null)
                 {
-                    operation.LogError("Operation canceled or timeout expired.");
+                    context.LogScope.Log(LogLevel.Error, $"Unable to resolve operation \"{actionStatement.ActionName}\". A Hedgehog extension may be missing.");
                     return ExecutionStatus.Fault;
                 }
 
-                operation.LogError("Unhandled exception: " + ex.ToString());
-                return ExecutionStatus.Error;
+                var operation = (Operation)Activator.CreateInstance(operationType);
+                await ScriptPropertyMapper.SetPropertiesAsync(operation, actionStatement, rompContext, context);
+
+                var loggedStatus = ExecutionStatus.Normal;
+                var logScopeName = Operation.GetLogScopeName(operationType, actionStatement);
+                var scopedLogger = new RompScopedLogger(this, context.LogScope.Current.Push(logScopeName), context.LogScope);
+                scopedLogger.BeginScope();
+
+                operation.MessageLogged +=
+                    (s, e) =>
+                    {
+                        if (e.Level >= MessageLevel.Warning && loggedStatus < ExecutionStatus.Error)
+                        {
+                            if (e.Level == MessageLevel.Error)
+                                loggedStatus = ExecutionStatus.Error;
+                            else if (e.Level == MessageLevel.Warning)
+                                loggedStatus = ExecutionStatus.Warning;
+                        }
+
+                        scopedLogger.Log(e.Level, e.Message);
+                    };
+
+                try
+                {
+                    var asyncOperation = operation as IExecutingOperation ?? throw new InvalidOperationException();
+
+                    context.SetReportProgressDelegate(() => operation.GetProgress()?.StatementProgress ?? default);
+                    await asyncOperation.ExecuteAsync(rompContext).ConfigureAwait(false);
+
+                    ScriptPropertyMapper.ReadOutputs(operation, actionStatement.OutArguments, context);
+
+                    return loggedStatus;
+                }
+                catch (ExecutionFailureException ex)
+                {
+                    if (!string.IsNullOrEmpty(ex.Message))
+                        operation.LogError(ex.Message);
+
+                    throw new ExecutionFailureException(ex.Message);
+                }
+                catch (Exception ex)
+                {
+                    if (ex is OperationCanceledException)
+                    {
+                        operation.LogError("Operation canceled or timeout expired.");
+                        return ExecutionStatus.Fault;
+                    }
+
+                    metric.Error = ex;
+                    operation.LogError("Unhandled exception: " + ex.ToString());
+                    return ExecutionStatus.Error;
+                }
+                finally
+                {
+                    scopedLogger.EndScope();
+                }
             }
             finally
             {
-                scopedLogger.EndScope();
+                if (RompConfig.CeipEnabled)
+                    EventMetric.Write(metric);
             }
         }
         public Task<object> GetExternalContextAsync(string contextType, string contextValue, IExecuterContext currentContext)
@@ -219,5 +231,24 @@ namespace Inedo.Romp.RompExecutionEngine
         }
 
         Task<NamedTemplate> IExecutionHostEnvironment.TryGetGlobalTemplateAsync(string templateName, IExecuterContext context) => this.TryGetGlobalTemplateAsync(templateName);
+
+        [EventMetric("Inedo", "Plans", "Operation")]
+        private sealed class OtterScriptOperationEventMetric
+        {
+            private readonly Stopwatch stopwatch = Stopwatch.StartNew();
+
+            public OtterScriptOperationEventMetric(string name) => this.Name = name;
+
+            [EventMetricValue("Name", SummaryFunction.Count, null)]
+            public string Name { get; }
+            [EventMetricValue("StartTime", SummaryFunction.Count, null, Caption = "Start Time")]
+            public DateTimeOffset StartTime { get; } = DateTimeOffset.Now;
+            [EventMetricValue("EndTime", SummaryFunction.Count, null, Caption = "End Time")]
+            public DateTimeOffset EndTime => this.StartTime + this.Duration;
+            [EventMetricValue("Duration", SummaryFunction.Average, "ms")]
+            public TimeSpan Duration => this.stopwatch.Elapsed;
+            [EventMetricValue("Error", SummaryFunction.Count, null)]
+            public Exception Error { get; set; }
+        }
     }
 }
