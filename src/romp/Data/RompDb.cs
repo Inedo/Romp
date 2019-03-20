@@ -17,9 +17,9 @@ namespace Inedo.Romp.Data
     internal static class RompDb
     {
         private static readonly Lazy<string> getConnectionString = new Lazy<string>(() => new SQLiteConnectionStringBuilder { DataSource = RompConfig.DataFilePath, ForeignKeys = true }.ToString(), LazyThreadSafetyMode.PublicationOnly);
-        private static readonly Lazy<string> createLogScopeSql = new Lazy<string>(() => GetScript(nameof(CreateLogScope)), LazyThreadSafetyMode.PublicationOnly);
-        private static readonly Lazy<string> completeLogScopeSql = new Lazy<string>(() => GetScript(nameof(CompleteLogScope)), LazyThreadSafetyMode.PublicationOnly);
-        private static readonly Lazy<string> writeLogMessageSql = new Lazy<string>(() => GetScript(nameof(WriteLogMessage)), LazyThreadSafetyMode.PublicationOnly);
+        private static readonly Lazy<SQLiteCommand> createLogScopeSql = new Lazy<SQLiteCommand>(() => GetCommand(nameof(CreateLogScope)));
+        private static readonly Lazy<SQLiteCommand> completeLogScopeSql = new Lazy<SQLiteCommand>(() => GetCommand(nameof(CompleteLogScope)));
+        private static readonly Lazy<SQLiteCommand> writeLogMessageSql = new Lazy<SQLiteCommand>(() => GetCommand(nameof(WriteLogMessage)));
         private static readonly LazyDisposableAsync<SQLiteConnection> connection = new LazyDisposableAsync<SQLiteConnection>(OpenConnection, OpenConnectionAsync);
         private static readonly object dbLock = new object();
 
@@ -164,15 +164,14 @@ namespace Inedo.Romp.Data
                 var metric = Start();
                 try
                 {
-                    using (var cmd = new SQLiteCommand(createLogScopeSql.Value, connection.Value))
-                    {
-                        cmd.Parameters.AddWithValue("@Execution_Id", executionId);
-                        cmd.Parameters.AddWithValue("@Parent_Scope_Sequence", parentScopeSequence);
-                        cmd.Parameters.AddWithValue("@Scope_Name", scopeName);
-                        cmd.Parameters.AddWithValue("@Start_Date", startDate.Ticks);
+                    var cmd = createLogScopeSql.Value;
+                    cmd.Parameters.Clear();
+                    cmd.Parameters.AddWithValue("@Execution_Id", executionId);
+                    cmd.Parameters.AddWithValue("@Parent_Scope_Sequence", parentScopeSequence);
+                    cmd.Parameters.AddWithValue("@Scope_Name", scopeName);
+                    cmd.Parameters.AddWithValue("@Start_Date", startDate.Ticks);
 
-                        return checked((int)(long)cmd.ExecuteScalar());
-                    }
+                    return checked((int)(long)cmd.ExecuteScalar());
                 }
                 catch (Exception ex)
                 {
@@ -195,14 +194,13 @@ namespace Inedo.Romp.Data
                 var metric = Start();
                 try
                 {
-                    using (var cmd = new SQLiteCommand(completeLogScopeSql.Value, connection.Value))
-                    {
-                        cmd.Parameters.AddWithValue("@Execution_Id", executionId);
-                        cmd.Parameters.AddWithValue("@Scope_Sequence", scopeSequence);
-                        cmd.Parameters.AddWithValue("@End_Date", endDate.Ticks);
+                    var cmd = completeLogScopeSql.Value;
+                    cmd.Parameters.Clear();
+                    cmd.Parameters.AddWithValue("@Execution_Id", executionId);
+                    cmd.Parameters.AddWithValue("@Scope_Sequence", scopeSequence);
+                    cmd.Parameters.AddWithValue("@End_Date", endDate.Ticks);
 
-                        cmd.ExecuteNonQuery();
-                    }
+                    cmd.ExecuteNonQuery();
                 }
                 catch (Exception ex)
                 {
@@ -225,16 +223,15 @@ namespace Inedo.Romp.Data
                 var metric = Start();
                 try
                 {
-                    using (var cmd = new SQLiteCommand(writeLogMessageSql.Value, connection.Value))
-                    {
-                        cmd.Parameters.AddWithValue("@Execution_Id", executionId);
-                        cmd.Parameters.AddWithValue("@Scope_Sequence", scopeSequence);
-                        cmd.Parameters.AddWithValue("@LogEntry_Level", level);
-                        cmd.Parameters.AddWithValue("@LogEntry_Text", message);
-                        cmd.Parameters.AddWithValue("@LogEntry_Date", date.Ticks);
+                    var cmd = writeLogMessageSql.Value;
+                    cmd.Parameters.Clear();
+                    cmd.Parameters.AddWithValue("@Execution_Id", executionId);
+                    cmd.Parameters.AddWithValue("@Scope_Sequence", scopeSequence);
+                    cmd.Parameters.AddWithValue("@LogEntry_Level", level);
+                    cmd.Parameters.AddWithValue("@LogEntry_Text", message);
+                    cmd.Parameters.AddWithValue("@LogEntry_Date", date.Ticks);
 
-                        cmd.ExecuteNonQuery();
-                    }
+                    cmd.ExecuteNonQuery();
                 }
                 catch (Exception ex)
                 {
@@ -400,6 +397,7 @@ namespace Inedo.Romp.Data
                 return reader.ReadToEnd();
             }
         }
+        private static SQLiteCommand GetCommand(string name) => new SQLiteCommand(GetScript(name), connection.Value);
         private static string Decrypt(SQLiteDataReader reader, int column)
         {
             if (reader.IsDBNull(column))
@@ -454,7 +452,6 @@ namespace Inedo.Romp.Data
             await conn.OpenAsync();
             return conn;
         }
-
 
         public sealed class ExecutionData
         {
