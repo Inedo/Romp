@@ -97,6 +97,10 @@ namespace Inedo.Romp
                 WaitForEnter();
                 return -1;
             }
+            finally
+            {
+                RompDb.Cleanup();
+            }
         }
 
         private static void WriteUsage()
