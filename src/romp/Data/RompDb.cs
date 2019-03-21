@@ -21,6 +21,7 @@ namespace Inedo.Romp.Data
         private static readonly Lazy<SQLiteCommand> completeLogScopeSql = new Lazy<SQLiteCommand>(() => GetCommand(nameof(CompleteLogScope)));
         private static readonly Lazy<SQLiteCommand> writeLogMessageSql = new Lazy<SQLiteCommand>(() => GetCommand(nameof(WriteLogMessage)));
         private static readonly LazyDisposableAsync<SQLiteConnection> connection = new LazyDisposableAsync<SQLiteConnection>(OpenConnection, OpenConnectionAsync);
+        private static readonly SortedList<LogMessageKey, List<LogMessage>> pendingLogMessages = new SortedList<LogMessageKey, List<LogMessage>>();
         private static readonly object dbLock = new object();
 
         private static string ConnectionString => getConnectionString.Value;
@@ -191,25 +192,61 @@ namespace Inedo.Romp.Data
                 if (!RompConfig.StoreLogs)
                     return;
 
-                var metric = Start();
-                try
+                using (var transaction = connection.Value.BeginTransaction())
                 {
-                    var cmd = completeLogScopeSql.Value;
-                    cmd.Parameters.Clear();
-                    cmd.Parameters.AddWithValue("@Execution_Id", executionId);
-                    cmd.Parameters.AddWithValue("@Scope_Sequence", scopeSequence);
-                    cmd.Parameters.AddWithValue("@End_Date", endDate.Ticks);
+                    var key = new LogMessageKey(executionId, scopeSequence);
+                    if (pendingLogMessages.TryGetValue(key, out var buffer))
+                    {
+                        var writeCommand = writeLogMessageSql.Value;
 
-                    cmd.ExecuteNonQuery();
-                }
-                catch (Exception ex)
-                {
-                    metric.Error = ex;
-                    throw;
-                }
-                finally
-                {
-                    metric.Write();
+                        foreach (var m in buffer)
+                        {
+                            var writeMetric = Start("WriteLogMessage");
+                            try
+                            {
+                                writeCommand.Parameters.Clear();
+                                writeCommand.Parameters.AddWithValue("@Execution_Id", executionId);
+                                writeCommand.Parameters.AddWithValue("@Scope_Sequence", scopeSequence);
+                                writeCommand.Parameters.AddWithValue("@LogEntry_Level", m.Level);
+                                writeCommand.Parameters.AddWithValue("@LogEntry_Text", m.Message);
+                                writeCommand.Parameters.AddWithValue("@LogEntry_Date", m.Date.Ticks);
+                                writeCommand.ExecuteNonQuery();
+                            }
+                            catch (Exception ex)
+                            {
+                                writeMetric.Error = ex;
+                                throw;
+                            }
+                            finally
+                            {
+                                writeMetric.Write();
+                            }
+                        }
+
+                        pendingLogMessages.Remove(key);
+                    }
+
+                    var metric = Start();
+                    try
+                    {
+                        var cmd = completeLogScopeSql.Value;
+                        cmd.Parameters.Clear();
+                        cmd.Parameters.AddWithValue("@Execution_Id", executionId);
+                        cmd.Parameters.AddWithValue("@Scope_Sequence", scopeSequence);
+                        cmd.Parameters.AddWithValue("@End_Date", endDate.Ticks);
+
+                        cmd.ExecuteNonQuery();
+                        transaction.Commit();
+                    }
+                    catch (Exception ex)
+                    {
+                        metric.Error = ex;
+                        throw;
+                    }
+                    finally
+                    {
+                        metric.Write();
+                    }
                 }
             }
         }
@@ -220,28 +257,14 @@ namespace Inedo.Romp.Data
                 if (!RompConfig.StoreLogs)
                     return;
 
-                var metric = Start();
-                try
+                var key = new LogMessageKey(executionId, scopeSequence);
+                if (!pendingLogMessages.TryGetValue(key, out var buffer))
                 {
-                    var cmd = writeLogMessageSql.Value;
-                    cmd.Parameters.Clear();
-                    cmd.Parameters.AddWithValue("@Execution_Id", executionId);
-                    cmd.Parameters.AddWithValue("@Scope_Sequence", scopeSequence);
-                    cmd.Parameters.AddWithValue("@LogEntry_Level", level);
-                    cmd.Parameters.AddWithValue("@LogEntry_Text", message);
-                    cmd.Parameters.AddWithValue("@LogEntry_Date", date.Ticks);
+                    buffer = new List<LogMessage>();
+                    pendingLogMessages.Add(key, buffer);
+                }
 
-                    cmd.ExecuteNonQuery();
-                }
-                catch (Exception ex)
-                {
-                    metric.Error = ex;
-                    throw;
-                }
-                finally
-                {
-                    metric.Write();
-                }
+                buffer.Add(new LogMessage(level, message, date));
             }
         }
         public static IEnumerable<ExecutionData> GetExecutions()
@@ -492,6 +515,41 @@ namespace Inedo.Romp.Data
             public string FeedUrl { get; }
             public string UserName { get; }
             public SecureString Password { get; }
+        }
+
+        private readonly struct LogMessageKey : IEquatable<LogMessageKey>, IComparable<LogMessageKey>
+        {
+            public LogMessageKey(int executionId, int scopeSequence)
+            {
+                this.ExecutionId = executionId;
+                this.ScopeSequence = scopeSequence;
+            }
+
+            public int ExecutionId { get; }
+            public int ScopeSequence { get; }
+
+            public int CompareTo(LogMessageKey other)
+            {
+                int res = this.ExecutionId.CompareTo(other.ExecutionId);
+                return res == 0 ? this.ScopeSequence.CompareTo(other.ScopeSequence) : res;
+            }
+            public bool Equals(LogMessageKey other) => this.ExecutionId == other.ExecutionId && this.ScopeSequence == other.ScopeSequence;
+            public override bool Equals(object obj) => obj is LogMessageKey key ? this.Equals(key) : false;
+            public override int GetHashCode() => this.ExecutionId | (this.ScopeSequence << 20);
+        }
+
+        private sealed class LogMessage
+        {
+            public LogMessage(int level, string message, DateTime date)
+            {
+                this.Level = level;
+                this.Message = message;
+                this.Date = date;
+            }
+
+            public int Level { get; }
+            public string Message { get; }
+            public DateTime Date { get; }
         }
     }
 }
