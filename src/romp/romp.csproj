@@ -21,15 +21,15 @@
     <None Remove="Data\Scripts\DeletePackageSource.sql" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Gibraltar.Agent" Version="4.7.10" />
+    <PackageReference Include="Gibraltar.Agent" Version="4.9.2" />
     <PackageReference Include="Inedo.Agents" Version="46.0.0" />
     <PackageReference Include="Inedo.Agents.Client" Version="547.0.0" />
-    <PackageReference Include="Inedo.ExecutionEngine" Version="69.0.0" />
-    <PackageReference Include="Inedo.SDK.DevOnly" Version="1.1.1" />
-    <PackageReference Include="Inedo.UPack" Version="1.0.6" />
-    <PackageReference Include="InedoLib" Version="543.0.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="12.0.1" />
-    <PackageReference Include="System.Data.SQLite.Core" Version="1.0.110" />
+    <PackageReference Include="Inedo.ExecutionEngine" Version="100.0.0" />
+    <PackageReference Include="Inedo.SDK.DevOnly" Version="1.6.2" />
+    <PackageReference Include="Inedo.UPack" Version="1.0.8" />
+    <PackageReference Include="InedoLib" Version="800.3.2" />
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
+    <PackageReference Include="System.Data.SQLite.Core" Version="1.0.112.1" />
     <PackageReference Include="System.ValueTuple" Version="4.5.0" />
   </ItemGroup>
   <ItemGroup>

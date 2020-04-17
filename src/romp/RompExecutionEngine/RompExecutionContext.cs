@@ -8,6 +8,7 @@ using Inedo.ExecutionEngine;
 using Inedo.ExecutionEngine.Executer;
 using Inedo.ExecutionEngine.Templating;
 using Inedo.ExecutionEngine.Variables;
+using Inedo.Extensibility;
 using Inedo.Extensibility.Agents;
 using Inedo.Extensibility.Operations;
 using Inedo.Extensibility.RaftRepositories;
@@ -45,6 +46,8 @@ namespace Inedo.Romp.RompExecutionEngine
         int? IVariableFunctionContext.ExecutionId => this.ExecutionId;
         int? IVariableFunctionContext.ServerId => 1;
 
+        IScopedLog IOperationExecutionContext.Log => null;
+
         public RompExecutionContext WithExecuterContext(IExecuterContext executerContext) => new RompExecutionContext(this) { ExecuterContext = executerContext };
         public RompExecutionContext WithDirectory(string directory) => new RompExecutionContext(this) { workingDirectoryOverride = PathEx.Combine(this.WorkingDirectory, directory) };
 
@@ -69,10 +72,10 @@ namespace Inedo.Romp.RompExecutionEngine
         }
 
         public RuntimeValue ExpandVariables(string text) => this.ExpandVariablesAsync(text).GetAwaiter().GetResult();
-        public Task<RuntimeValue> ExpandVariablesAsync(string text)
+        public async Task<RuntimeValue> ExpandVariablesAsync(string text)
         {
             var ps = ProcessedString.Parse(text);
-            return ps.EvaluateAsync(new RompVariableEvaluationContext(this, this.ExecuterContext));
+            return await ps.EvaluateValueAsync(new RompVariableEvaluationContext(this, this.ExecuterContext));
         }
 
         public Agent GetAgent(string serverName)
