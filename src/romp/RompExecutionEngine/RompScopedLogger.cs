@@ -1,50 +1,51 @@
-﻿using System;
+﻿using System.Collections.Generic;
 using Inedo.Diagnostics;
 using Inedo.ExecutionEngine;
 using Inedo.ExecutionEngine.Executer;
-using Inedo.Romp.Data;
 
 namespace Inedo.Romp.RompExecutionEngine
 {
-    internal sealed class RompScopedLogger : ActiveNamedScope
+    internal sealed class RompScopedLogger : ActiveNamedScope, ILogSink
     {
-        private static readonly object LogLock = new object();
         private readonly RompExecutionEnvironment executer;
-        private int scopeSequence;
+        private IEnumerable<IMessage> initialMessages;
 
-        public RompScopedLogger(RompExecutionEnvironment executer, ScopeIdentifier current, ActiveNamedScope parent)
+        public RompScopedLogger(RompExecutionEnvironment executer, ScopeIdentifier current, ActiveNamedScope parent, IEnumerable<IMessage> initialMessages = null)
             : base(current, parent)
         {
             this.executer = executer;
+            this.initialMessages = initialMessages;
         }
 
-        public void Log(MessageLevel logLevel, string message)
-        {
-            lock (LogLock)
-            {
-                Logger.Log(logLevel, message);
+        public RompScopedExecutionLog Scope { get; private set; }
 
-                int? executionId = this.executer?.ExecutionId;
-                if (executionId > 0 && this.scopeSequence > 0)
-                    RompDb.WriteLogMessage((int)executionId, this.scopeSequence, (int)logLevel, message, DateTime.UtcNow);
-            }
+        public void Log(IMessage message)
+        {
+            Logger.Log(message);
+            this.Scope?.Log(message);
         }
         public override void Log(LogLevel level, string message) => this.Log((MessageLevel)level, message);
         public override void BeginScope()
         {
-            lock (LogLock)
+            var parent = (RompScopedLogger)this.Parent;
+
+            if (parent != null)
+                this.Scope = parent.Scope.CreateChildScope(this.Current.LocalName);
+            else
+                this.Scope = this.executer.RootExecutionLog.CreateChildScope(this.Current.LocalName);
+
+            if (this.initialMessages != null)
             {
-                var parent = (RompScopedLogger)this.Parent;
-                if (this.executer.LogToDatabase)
-                    this.scopeSequence = RompDb.CreateLogScope((int)this.executer.ExecutionId, parent?.scopeSequence, this.Current.LocalName, DateTime.UtcNow);
+                this.Scope.Log(this.initialMessages);
+                this.initialMessages = null;
             }
         }
         public override void EndScope()
         {
-            lock (LogLock)
+            if (this.Parent != null)
             {
-                if (this.executer.LogToDatabase)
-                    RompDb.CompleteLogScope((int)this.executer.ExecutionId, this.scopeSequence, DateTime.UtcNow);
+                this.Scope?.Dispose();
+                this.Scope = null;
             }
         }
     }

@@ -22,11 +22,13 @@ namespace Inedo.Romp.RompExecutionEngine
     internal sealed class RompExecutionEnvironment : IExecutionHostEnvironment
     {
         private ScopedStatementBlock plan;
+        private readonly Lazy<RompScopedExecutionLog> rootExecutionLogLazy;
 
         public RompExecutionEnvironment(ScopedStatementBlock script, bool simulate)
         {
             this.plan = script;
             this.Simulation = simulate;
+            this.rootExecutionLogLazy = new Lazy<RompScopedExecutionLog>(() => RompScopedExecutionLog.Create(this.ExecutionId.GetValueOrDefault()));
         }
 
         public RompExecutionContext DefaultExternalContext { get; private set; }
@@ -34,6 +36,7 @@ namespace Inedo.Romp.RompExecutionEngine
         public bool Simulation { get; }
         public int? ExecutionId { get; private set; }
         public bool LogToDatabase => true;
+        public RompScopedExecutionLog RootExecutionLog => this.rootExecutionLogLazy.Value;
 
         private ExecuterThread Executer { get; set; }
 
