@@ -77,7 +77,6 @@ namespace Inedo.Romp.RompExecutionEngine
             }
             finally
             {
-                var duration = DateTime.UtcNow.Subtract(startTime);
                 try
                 {
                     this.CleanTempDirectory();
@@ -85,6 +84,8 @@ namespace Inedo.Romp.RompExecutionEngine
                 catch
                 {
                 }
+
+                await this.RootExecutionLog.CompleteAllAsync();
 
                 RompDb.CompleteExecution(
                     executionId: this.ExecutionId.Value,
